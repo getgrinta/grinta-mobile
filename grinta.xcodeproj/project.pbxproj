@@ -6,15 +6,13 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		4923EE8F2D56915100134534 /* SFSafeSymbols in Frameworks */ = {isa = PBXBuildFile; productRef = 4923EE8E2D56915100134534 /* SFSafeSymbols */; };
+		497BE7F42D57686C000F54B4 /* ComposableArchitecture in Frameworks */ = {isa = PBXBuildFile; productRef = 497BE7F32D57686C000F54B4 /* ComposableArchitecture */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		4923EE712D5685EA00134534 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 4923EE572D5685E800134534 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 4923EE5E2D5685E800134534;
-			remoteInfo = grinta;
-		};
-		4923EE7B2D5685EA00134534 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 4923EE572D5685E800134534 /* Project object */;
 			proxyType = 1;
@@ -24,9 +22,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		4923EE5F2D5685E800134534 /* grinta.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = grinta.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		4923EE702D5685EA00134534 /* grintaTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = grintaTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		4923EE7A2D5685EA00134534 /* grintaUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = grintaUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		4923EE5F2D5685E800134534 /* Grinta.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Grinta.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		4923EE702D5685EA00134534 /* GrintaTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = GrintaTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -52,17 +49,12 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				497BE7F42D57686C000F54B4 /* ComposableArchitecture in Frameworks */,
+				4923EE8F2D56915100134534 /* SFSafeSymbols in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		4923EE6D2D5685EA00134534 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		4923EE772D5685EA00134534 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -85,9 +77,8 @@
 		4923EE602D5685E800134534 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				4923EE5F2D5685E800134534 /* grinta.app */,
-				4923EE702D5685EA00134534 /* grintaTests.xctest */,
-				4923EE7A2D5685EA00134534 /* grintaUITests.xctest */,
+				4923EE5F2D5685E800134534 /* Grinta.app */,
+				4923EE702D5685EA00134534 /* GrintaTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -95,9 +86,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		4923EE5E2D5685E800134534 /* grinta */ = {
+		4923EE5E2D5685E800134534 /* Grinta */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 4923EE842D5685EA00134534 /* Build configuration list for PBXNativeTarget "grinta" */;
+			buildConfigurationList = 4923EE842D5685EA00134534 /* Build configuration list for PBXNativeTarget "Grinta" */;
 			buildPhases = (
 				4923EE5B2D5685E800134534 /* Sources */,
 				4923EE5C2D5685E800134534 /* Frameworks */,
@@ -110,16 +101,18 @@
 			fileSystemSynchronizedGroups = (
 				4923EE612D5685E800134534 /* grinta */,
 			);
-			name = grinta;
+			name = Grinta;
 			packageProductDependencies = (
+				4923EE8E2D56915100134534 /* SFSafeSymbols */,
+				497BE7F32D57686C000F54B4 /* ComposableArchitecture */,
 			);
 			productName = grinta;
-			productReference = 4923EE5F2D5685E800134534 /* grinta.app */;
+			productReference = 4923EE5F2D5685E800134534 /* Grinta.app */;
 			productType = "com.apple.product-type.application";
 		};
-		4923EE6F2D5685EA00134534 /* grintaTests */ = {
+		4923EE6F2D5685EA00134534 /* GrintaTests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 4923EE872D5685EA00134534 /* Build configuration list for PBXNativeTarget "grintaTests" */;
+			buildConfigurationList = 4923EE872D5685EA00134534 /* Build configuration list for PBXNativeTarget "GrintaTests" */;
 			buildPhases = (
 				4923EE6C2D5685EA00134534 /* Sources */,
 				4923EE6D2D5685EA00134534 /* Frameworks */,
@@ -133,35 +126,12 @@
 			fileSystemSynchronizedGroups = (
 				4923EE732D5685EA00134534 /* grintaTests */,
 			);
-			name = grintaTests;
+			name = GrintaTests;
 			packageProductDependencies = (
 			);
 			productName = grintaTests;
-			productReference = 4923EE702D5685EA00134534 /* grintaTests.xctest */;
+			productReference = 4923EE702D5685EA00134534 /* GrintaTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
-		};
-		4923EE792D5685EA00134534 /* grintaUITests */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 4923EE8A2D5685EA00134534 /* Build configuration list for PBXNativeTarget "grintaUITests" */;
-			buildPhases = (
-				4923EE762D5685EA00134534 /* Sources */,
-				4923EE772D5685EA00134534 /* Frameworks */,
-				4923EE782D5685EA00134534 /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-				4923EE7C2D5685EA00134534 /* PBXTargetDependency */,
-			);
-			fileSystemSynchronizedGroups = (
-				4923EE7D2D5685EA00134534 /* grintaUITests */,
-			);
-			name = grintaUITests;
-			packageProductDependencies = (
-			);
-			productName = grintaUITests;
-			productReference = 4923EE7A2D5685EA00134534 /* grintaUITests.xctest */;
-			productType = "com.apple.product-type.bundle.ui-testing";
 		};
 /* End PBXNativeTarget section */
 
@@ -180,10 +150,6 @@
 						CreatedOnToolsVersion = 16.2;
 						TestTargetID = 4923EE5E2D5685E800134534;
 					};
-					4923EE792D5685EA00134534 = {
-						CreatedOnToolsVersion = 16.2;
-						TestTargetID = 4923EE5E2D5685E800134534;
-					};
 				};
 			};
 			buildConfigurationList = 4923EE5A2D5685E800134534 /* Build configuration list for PBXProject "grinta" */;
@@ -195,14 +161,17 @@
 			);
 			mainGroup = 4923EE562D5685E800134534;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				4923EE8D2D56915100134534 /* XCRemoteSwiftPackageReference "SFSafeSymbols" */,
+				497BE7F22D57686C000F54B4 /* XCRemoteSwiftPackageReference "swift-composable-architecture" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 4923EE602D5685E800134534 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				4923EE5E2D5685E800134534 /* grinta */,
-				4923EE6F2D5685EA00134534 /* grintaTests */,
-				4923EE792D5685EA00134534 /* grintaUITests */,
+				4923EE5E2D5685E800134534 /* Grinta */,
+				4923EE6F2D5685EA00134534 /* GrintaTests */,
 			);
 		};
 /* End PBXProject section */
@@ -216,13 +185,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		4923EE6E2D5685EA00134534 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		4923EE782D5685EA00134534 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -246,25 +208,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		4923EE762D5685EA00134534 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
 		4923EE722D5685EA00134534 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 4923EE5E2D5685E800134534 /* grinta */;
+			target = 4923EE5E2D5685E800134534 /* Grinta */;
 			targetProxy = 4923EE712D5685EA00134534 /* PBXContainerItemProxy */;
-		};
-		4923EE7C2D5685EA00134534 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 4923EE5E2D5685E800134534 /* grinta */;
-			targetProxy = 4923EE7B2D5685EA00134534 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -396,17 +346,19 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphonesimulator*]" = YES;
-				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphoneos*]" = YES;
-				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphoneos*]" = NO;
+				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphonesimulator*]" = NO;
+				INFOPLIST_KEY_UILaunchStoryboardName = Laun;
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphoneos*]" = UIStatusBarStyleDefault;
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 15.2;
@@ -414,10 +366,11 @@
 				PRODUCT_BUNDLE_IDENTIFIER = pl.alorenc.grinta;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2,7";
+				TARGETED_DEVICE_FAMILY = "1,2";
 				XROS_DEPLOYMENT_TARGET = 2.2;
 			};
 			name = Debug;
@@ -435,17 +388,19 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphonesimulator*]" = YES;
-				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphoneos*]" = YES;
-				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphoneos*]" = NO;
+				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphonesimulator*]" = NO;
+				INFOPLIST_KEY_UILaunchStoryboardName = Laun;
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphoneos*]" = UIStatusBarStyleDefault;
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 15.2;
@@ -453,10 +408,11 @@
 				PRODUCT_BUNDLE_IDENTIFIER = pl.alorenc.grinta;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2,7";
+				TARGETED_DEVICE_FAMILY = "1,2";
 				XROS_DEPLOYMENT_TARGET = 2.2;
 			};
 			name = Release;
@@ -507,50 +463,6 @@
 			};
 			name = Release;
 		};
-		4923EE8B2D5685EA00134534 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = R2CTR74H64;
-				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
-				MACOSX_DEPLOYMENT_TARGET = 15.2;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = pl.alorenc.grintaUITests;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = auto;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2,7";
-				TEST_TARGET_NAME = grinta;
-				XROS_DEPLOYMENT_TARGET = 2.2;
-			};
-			name = Debug;
-		};
-		4923EE8C2D5685EA00134534 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = R2CTR74H64;
-				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
-				MACOSX_DEPLOYMENT_TARGET = 15.2;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = pl.alorenc.grintaUITests;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = auto;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2,7";
-				TEST_TARGET_NAME = grinta;
-				XROS_DEPLOYMENT_TARGET = 2.2;
-			};
-			name = Release;
-		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -563,7 +475,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		4923EE842D5685EA00134534 /* Build configuration list for PBXNativeTarget "grinta" */ = {
+		4923EE842D5685EA00134534 /* Build configuration list for PBXNativeTarget "Grinta" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				4923EE852D5685EA00134534 /* Debug */,
@@ -572,7 +484,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		4923EE872D5685EA00134534 /* Build configuration list for PBXNativeTarget "grintaTests" */ = {
+		4923EE872D5685EA00134534 /* Build configuration list for PBXNativeTarget "GrintaTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				4923EE882D5685EA00134534 /* Debug */,
@@ -581,16 +493,39 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		4923EE8A2D5685EA00134534 /* Build configuration list for PBXNativeTarget "grintaUITests" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				4923EE8B2D5685EA00134534 /* Debug */,
-				4923EE8C2D5685EA00134534 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		4923EE8D2D56915100134534 /* XCRemoteSwiftPackageReference "SFSafeSymbols" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/SFSafeSymbols/SFSafeSymbols.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 5.3.0;
+			};
+		};
+		497BE7F22D57686C000F54B4 /* XCRemoteSwiftPackageReference "swift-composable-architecture" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/pointfreeco/swift-composable-architecture";
+			requirement = {
+				kind = exactVersion;
+				version = 1.17.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		4923EE8E2D56915100134534 /* SFSafeSymbols */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4923EE8D2D56915100134534 /* XCRemoteSwiftPackageReference "SFSafeSymbols" */;
+			productName = SFSafeSymbols;
+		};
+		497BE7F32D57686C000F54B4 /* ComposableArchitecture */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 497BE7F22D57686C000F54B4 /* XCRemoteSwiftPackageReference "swift-composable-architecture" */;
+			productName = ComposableArchitecture;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 4923EE572D5685E800134534 /* Project object */;
 }
