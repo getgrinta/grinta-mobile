@@ -1,5 +1,5 @@
-import Dependencies
 import ComposableArchitecture
+import Dependencies
 import SFSafeSymbols
 import SwiftUI
 
@@ -20,7 +20,6 @@ struct Main {
     }
 
     @Dependency(LLMClient.self) var llmClient
-
 
     var body: some ReducerOf<Self> {
         BindingReducer()

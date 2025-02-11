@@ -1,7 +1,6 @@
 import Foundation
 
 struct RequestBuilder {
-
     func createLLMStreamRequest(endpoint: String, message: String, bearer: String) -> URLRequest {
         let components = URLComponents(string: endpoint)!
 

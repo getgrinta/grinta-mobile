@@ -39,7 +39,7 @@ final class LLMStreamingClient: NSObject, URLSessionDataDelegate {
         return string
     }
 
-    func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
+    func urlSession(_: URLSession, dataTask _: URLSessionDataTask, didReceive data: Data) {
         guard let chunk = String(data: data, encoding: .utf8) else { return }
         processStream(data: chunk)
     }
