@@ -37,11 +37,6 @@
 			path = grintaTests;
 			sourceTree = "<group>";
 		};
-		4923EE7D2D5685EA00134534 /* grintaUITests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = grintaUITests;
-			sourceTree = "<group>";
-		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -69,7 +64,6 @@
 			children = (
 				4923EE612D5685E800134534 /* grinta */,
 				4923EE732D5685EA00134534 /* grintaTests */,
-				4923EE7D2D5685EA00134534 /* grintaUITests */,
 				4923EE602D5685E800134534 /* Products */,
 			);
 			sourceTree = "<group>";
