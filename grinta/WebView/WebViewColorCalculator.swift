@@ -15,6 +15,7 @@ enum WebViewRegion {
 }
 
 /// Takes a snapshot of a WKWebView and calculates the average color of a specified region.
+@MainActor
 struct WebViewAverageColorCalculator {
     private let averageColorCalculator = AverageColorCalculator()
 

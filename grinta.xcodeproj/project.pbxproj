@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		4923EE8F2D56915100134534 /* SFSafeSymbols in Frameworks */ = {isa = PBXBuildFile; productRef = 4923EE8E2D56915100134534 /* SFSafeSymbols */; };
+		495141112D5CE59200FD2041 /* WebURL in Frameworks */ = {isa = PBXBuildFile; productRef = 495141102D5CE59200FD2041 /* WebURL */; };
 		497BE7F42D57686C000F54B4 /* ComposableArchitecture in Frameworks */ = {isa = PBXBuildFile; productRef = 497BE7F32D57686C000F54B4 /* ComposableArchitecture */; };
 /* End PBXBuildFile section */
 
@@ -46,6 +47,7 @@
 			files = (
 				497BE7F42D57686C000F54B4 /* ComposableArchitecture in Frameworks */,
 				4923EE8F2D56915100134534 /* SFSafeSymbols in Frameworks */,
+				495141112D5CE59200FD2041 /* WebURL in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -64,6 +66,7 @@
 			children = (
 				4923EE612D5685E800134534 /* grinta */,
 				4923EE732D5685EA00134534 /* grintaTests */,
+				4951410F2D5CE59200FD2041 /* Frameworks */,
 				4923EE602D5685E800134534 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -75,6 +78,13 @@
 				4923EE702D5685EA00134534 /* GrintaTests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		4951410F2D5CE59200FD2041 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -99,6 +109,7 @@
 			packageProductDependencies = (
 				4923EE8E2D56915100134534 /* SFSafeSymbols */,
 				497BE7F32D57686C000F54B4 /* ComposableArchitecture */,
+				495141102D5CE59200FD2041 /* WebURL */,
 			);
 			productName = grinta;
 			productReference = 4923EE5F2D5685E800134534 /* Grinta.app */;
@@ -152,12 +163,15 @@
 			knownRegions = (
 				en,
 				Base,
+				pl,
+				de,
 			);
 			mainGroup = 4923EE562D5685E800134534;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				4923EE8D2D56915100134534 /* XCRemoteSwiftPackageReference "SFSafeSymbols" */,
 				497BE7F22D57686C000F54B4 /* XCRemoteSwiftPackageReference "swift-composable-architecture" */,
+				495140CD2D5CE41100FD2041 /* XCRemoteSwiftPackageReference "swift-url" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 4923EE602D5685E800134534 /* Products */;
@@ -270,6 +284,7 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
 			name = Debug;
@@ -324,6 +339,7 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_EMIT_LOC_STRINGS = YES;
 			};
 			name = Release;
 		};
@@ -347,7 +363,7 @@
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphoneos*]" = NO;
 				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphonesimulator*]" = NO;
-				INFOPLIST_KEY_UILaunchStoryboardName = Laun;
+				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen.storyboard;
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphoneos*]" = UIStatusBarStyleDefault;
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
@@ -363,6 +379,14 @@
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_UPCOMING_FEATURE_CONCISE_MAGIC_FILE = YES;
+				SWIFT_UPCOMING_FEATURE_DEPRECATE_APPLICATION_MAIN = YES;
+				SWIFT_UPCOMING_FEATURE_GLOBAL_CONCURRENCY = YES;
+				SWIFT_UPCOMING_FEATURE_INFER_SENDABLE_FROM_CAPTURES = YES;
+				SWIFT_UPCOMING_FEATURE_INTERNAL_IMPORTS_BY_DEFAULT = YES;
+				SWIFT_UPCOMING_FEATURE_ISOLATED_DEFAULT_VALUES = YES;
+				SWIFT_UPCOMING_FEATURE_REGION_BASED_ISOLATION = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				XROS_DEPLOYMENT_TARGET = 2.2;
@@ -389,7 +413,7 @@
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphoneos*]" = NO;
 				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphonesimulator*]" = NO;
-				INFOPLIST_KEY_UILaunchStoryboardName = Laun;
+				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen.storyboard;
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphoneos*]" = UIStatusBarStyleDefault;
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
@@ -405,6 +429,14 @@
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_UPCOMING_FEATURE_CONCISE_MAGIC_FILE = YES;
+				SWIFT_UPCOMING_FEATURE_DEPRECATE_APPLICATION_MAIN = YES;
+				SWIFT_UPCOMING_FEATURE_GLOBAL_CONCURRENCY = YES;
+				SWIFT_UPCOMING_FEATURE_INFER_SENDABLE_FROM_CAPTURES = YES;
+				SWIFT_UPCOMING_FEATURE_INTERNAL_IMPORTS_BY_DEFAULT = YES;
+				SWIFT_UPCOMING_FEATURE_ISOLATED_DEFAULT_VALUES = YES;
+				SWIFT_UPCOMING_FEATURE_REGION_BASED_ISOLATION = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				XROS_DEPLOYMENT_TARGET = 2.2;
@@ -498,6 +530,14 @@
 				minimumVersion = 5.3.0;
 			};
 		};
+		495140CD2D5CE41100FD2041 /* XCRemoteSwiftPackageReference "swift-url" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/karwa/swift-url";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
 		497BE7F22D57686C000F54B4 /* XCRemoteSwiftPackageReference "swift-composable-architecture" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/pointfreeco/swift-composable-architecture";
@@ -513,6 +553,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 4923EE8D2D56915100134534 /* XCRemoteSwiftPackageReference "SFSafeSymbols" */;
 			productName = SFSafeSymbols;
+		};
+		495141102D5CE59200FD2041 /* WebURL */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 495140CD2D5CE41100FD2041 /* XCRemoteSwiftPackageReference "swift-url" */;
+			productName = WebURL;
 		};
 		497BE7F32D57686C000F54B4 /* ComposableArchitecture */ = {
 			isa = XCSwiftPackageProductDependency;

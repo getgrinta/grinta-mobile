@@ -27,24 +27,21 @@ struct WebView: UIViewRepresentable {
         let webView = WKWebView()
         webView.navigationDelegate = context.coordinator
         webView.load(URLRequest(url: url))
+        context.coordinator.lastUILoadedURL = url
         return webView
     }
 
     func updateUIView(_ webView: WKWebView, context: Context) {
-        // Initial load
-        guard webView.url != nil else {
-            context.coordinator.lastUILoadedURL = url
-            webView.load(URLRequest(url: url))
+        // Reload only if the url supplied to WebView changes
+        // Not if it's different from the current url
+        guard let lastLoadedURL = context.coordinator.lastUILoadedURL,
+              url.isEquivalent(to: lastLoadedURL) == false
+        else {
             return
         }
 
-        // Reload only if the url supplied to WebView changes
-        // Not if it's different from the current url
-        if let lastLoadedURL = context.coordinator.lastUILoadedURL,
-            url.isEquivalent(to: lastLoadedURL) == false {
-            context.coordinator.lastUILoadedURL = url
-            webView.load(URLRequest(url: url))
-        }
+        context.coordinator.lastUILoadedURL = url
+        webView.load(URLRequest(url: url))
     }
 
     final class Coordinator: NSObject, WKNavigationDelegate {

@@ -7,7 +7,6 @@ struct MainView: View {
 
     @State private var showSheet = true
     @State private var settingsPresented = false
-    @State private var currentURL: URL?
     @State private var sheetColor = Color(uiColor: UIColor(red: 26 / 255, green: 26 / 255, blue: 26 / 255, alpha: 1))
 
     var body: some View {
@@ -16,7 +15,7 @@ struct MainView: View {
                 StatusBarCoverView(color: sheetColor, safeAreaInsets: proxy.safeAreaInsets)
 
                 Group {
-                    if let currentURL {
+                    if let currentURL = store.currentURL {
                         WebView(url: currentURL)
                             .onBrandColorChange { color in
                                 withAnimation {
@@ -27,23 +26,22 @@ struct MainView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 // Don't go below bottom safe area inset
+                // which is reserved for the bottom bar
                 .containerRelativeFrame(.vertical, alignment: .top) { length, _ in
                     length - proxy.safeAreaInsets.bottom
                 }
-                .animation(nil, value: currentURL)
+                .animation(nil, value: store.currentURL)
 
                 BottomBarBackgroundView()
             }
-            .animation(nil, value: currentURL)
+            .animation(nil, value: store.currentURL)
             .sheet(isPresented: $showSheet) {
-                // Replace this API with methods on MagicSheetView
-                MagicSheetView(settingsPresented: {
+                // Replace closures with specialized methods on MagicSheetView
+                MagicSheetView(store: store.scope(state: \.magicSheet, action: \.magicSheet), settingsPresented: {
                     settingsPresented = true
-                }, openURL: { url in
-                    currentURL = url
                 })
                 .sheet(isPresented: $settingsPresented) {
-                    Text("WOW")
+                    Text("Settings")
                 }
             }
             .background(Color(uiColor: UIColor(red: 26 / 255, green: 26 / 255, blue: 26 / 255, alpha: 1)))

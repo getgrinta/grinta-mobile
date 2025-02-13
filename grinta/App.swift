@@ -5,9 +5,7 @@ import SwiftUI
 struct Application: App {
     var body: some Scene {
         WindowGroup {
-            MainView(store: Store(
-                initialState: Main.State()
-            ) {
+            MainView(store: Store(initialState: Main.State()) {
                 Main()
             })
         }
