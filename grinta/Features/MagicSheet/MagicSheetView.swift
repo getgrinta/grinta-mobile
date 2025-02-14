@@ -2,6 +2,16 @@ import ComposableArchitecture
 import RegexBuilder
 import SwiftUI
 
+struct VisualEffectBlur: UIViewRepresentable {
+    let style: UIBlurEffect.Style
+
+    func makeUIView(context _: Context) -> UIVisualEffectView {
+        UIVisualEffectView(effect: UIBlurEffect(style: style))
+    }
+
+    func updateUIView(_: UIVisualEffectView, context _: Context) {}
+}
+
 struct MagicSheetView: View {
     @Bindable var store: StoreOf<MagicSheet>
 
@@ -62,15 +72,16 @@ struct MagicSheetView: View {
                             L10n.search,
                             text: $store.searchText.sending(\.searchTextChanged).animation(.easeInOut)
                         )
+                        .keyboardType(.webSearch)
+                        .submitLabel(.go)
                         .autocorrectionDisabled()
                         .textInputAutocapitalization(.never)
                         .onKeyPress { _ in
                             UIImpactFeedbackGenerator().prepare()
                             return .ignored
                         }
-                        .onKeyPress(.return) {
+                        .onSubmit {
                             store.send(.submitSearch)
-                            return .handled
                         }
                         .foregroundColor(.neutral200)
                         .font(.title3)
@@ -130,6 +141,7 @@ struct MagicSheetView: View {
                     } label: {
                         ListEntryView(
                             image: suggestion.image,
+                            imageURL: suggestion.imageURL.flatMap { URL(string: $0) },
                             title: suggestion.title,
                             type: suggestion.type.title,
                             searchText: store.searchText
@@ -140,20 +152,34 @@ struct MagicSheetView: View {
                     .listRowBackground(Color.clear)
                 }
             }
+            .transaction { $0.animation = nil }
             .listStyle(.plain)
         }
     }
 
-    private func ListEntryView(image: ImageResource?, title: String, type: String, searchText: String) -> some View {
+    private func ListEntryView(image: ImageResource?, imageURL: URL?, title: String, type: String, searchText: String) -> some View {
         HStack(spacing: 12) {
-            Image(image ?? ImageResource.globe)
-                .resizable()
-                .foregroundStyle(Color.white)
-                .tint(Color.white)
-                .aspectRatio(contentMode: .fit)
-                .frame(width: 30)
-                .layoutPriority(0)
-                .font(.title3)
+            if let imageURL {
+                AsyncImage(url: imageURL, content: { image in
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .layoutPriority(0)
+                        .frame(width: 30)
+
+                }, placeholder: {
+                    Image(image ?? .globe)
+                })
+            } else {
+                Image(image ?? ImageResource.globe)
+                    .resizable()
+                    .foregroundStyle(.neutral400)
+                    .tint(Color.white)
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 30)
+                    .layoutPriority(0)
+                    .font(.title3)
+            }
 
             Text({
                 var attributedString = AttributedString(title)
@@ -167,15 +193,18 @@ struct MagicSheetView: View {
             }())
                 .layoutPriority(1)
 
-            Spacer()
+            if type.hasPrefix("Search") == false {
+                Spacer()
 
-            RoundedView {
-                Text(type)
-                    .foregroundColor(.neutral50)
-                    .font(.subheadline)
+                RoundedView {
+                    Text(type)
+                        .foregroundColor(.neutral50)
+                        .font(.subheadline)
+                }
+                .layoutPriority(1)
             }
-            .layoutPriority(1)
         }
+        .frame(minHeight: 38)
     }
 }
 

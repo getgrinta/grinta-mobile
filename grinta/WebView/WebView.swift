@@ -4,23 +4,39 @@ import WebKit
 
 struct WebView: UIViewRepresentable {
     let url: URL
-    private var brandColorClosure: ((Color) -> Void) = { _ in }
+
+    enum ColorPickerRegion {
+        case top(CGFloat)
+        case bottom(CGFloat)
+    }
+
+    private var brandColorClosures: [(region: ColorPickerRegion, closure: @Sendable @MainActor (Color) -> Void)] = []
+    private var websiteMetadataClosure: (@Sendable @MainActor (WebsiteMetadata) -> Void)?
 
     init(url: URL) {
         self.url = url
     }
 
-    init(url: URL, brandColorClosure: @escaping ((Color) -> Void)) {
+    init(
+        url: URL,
+        brandColorClosures: [(region: ColorPickerRegion, closure: @Sendable @MainActor (Color) -> Void)],
+        websiteMetadataClosure: (@Sendable @MainActor (WebsiteMetadata) -> Void)?
+    ) {
         self.url = url
-        self.brandColorClosure = brandColorClosure
+        self.brandColorClosures = brandColorClosures
+        self.websiteMetadataClosure = websiteMetadataClosure
     }
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(self, brandColorClosure: brandColorClosure)
+        Coordinator(self, brandColorClosures: brandColorClosures, websiteMetadataClosure: websiteMetadataClosure)
     }
 
-    func onBrandColorChange(_ closure: @escaping (Color) -> Void) -> Self {
-        Self(url: url, brandColorClosure: closure)
+    func onBrandColorChange(region: ColorPickerRegion, closure: @escaping @Sendable @MainActor (Color) -> Void) -> Self {
+        Self(url: url, brandColorClosures: brandColorClosures + [(region: region, closure: closure)], websiteMetadataClosure: websiteMetadataClosure)
+    }
+
+    func onWebsiteMetadata(closure: @escaping @Sendable @MainActor (WebsiteMetadata) -> Void) -> Self {
+        Self(url: url, brandColorClosures: brandColorClosures, websiteMetadataClosure: closure)
     }
 
     func makeUIView(context: Context) -> WKWebView {
@@ -28,6 +44,7 @@ struct WebView: UIViewRepresentable {
         webView.navigationDelegate = context.coordinator
         webView.load(URLRequest(url: url))
         context.coordinator.lastUILoadedURL = url
+        context.coordinator.webView = webView
         return webView
     }
 
@@ -44,40 +61,85 @@ struct WebView: UIViewRepresentable {
         webView.load(URLRequest(url: url))
     }
 
+    @MainActor
     final class Coordinator: NSObject, WKNavigationDelegate {
         let parent: WebView
-        let brandColorClosure: (Color) -> Void
+        let brandColorClosures: [(region: ColorPickerRegion, closure: @Sendable @MainActor (Color) -> Void)]
+        let websiteMetadataClosure: (@Sendable @MainActor (WebsiteMetadata) -> Void)?
         var lastUILoadedURL: URL?
+        var token: NSKeyValueObservation?
 
-        init(_ parent: WebView, brandColorClosure: @escaping (Color) -> Void) {
+        unowned var webView: WKWebView? {
+            didSet {
+                guard let webView else { return }
+
+                token?.invalidate()
+                token = nil
+                token = webView.observe(\.scrollView.contentOffset, options: [.new]) { _, _ in
+                    Task {
+                        await self.pickBrandColors(webView: webView, onlyBottom: true)
+                    }
+                }
+            }
+        }
+
+        init(
+            _ parent: WebView,
+            brandColorClosures: [(region: ColorPickerRegion, closure: @Sendable @MainActor (Color) -> Void)],
+            websiteMetadataClosure: (@Sendable @MainActor (WebsiteMetadata) -> Void)?
+        ) {
             self.parent = parent
-            self.brandColorClosure = brandColorClosure
+            self.brandColorClosures = brandColorClosures
+            self.websiteMetadataClosure = websiteMetadataClosure
+
+            print("Creating coordinator with closure: is nil: \(websiteMetadataClosure == nil) ")
         }
 
         func webView(_ webView: WKWebView, didStartProvisionalNavigation _: WKNavigation!) {
-            pickTopBrandColor(webView: webView)
+            pickBrandColors(webView: webView)
         }
 
         func webView(_ webView: WKWebView, didCommit _: WKNavigation!) {
-            pickTopBrandColor(webView: webView)
+            pickBrandColors(webView: webView)
         }
 
-        private func pickTopBrandColor(webView: WKWebView) {
-            WebViewAverageColorCalculator().calculateAverageColor(
-                for: webView,
-                in: .top(20)
-            ) { result in
-                switch result {
-                case let .success(color):
-                    self.brandColorClosure(Color(color))
-                case let .failure(failure):
-                    print("Failure: \(failure)")
+        private func pickBrandColors(webView: WKWebView, onlyBottom: Bool = false) {
+            for brandColorClosure in brandColorClosures {
+                let webViewRegion: WebViewRegion = switch brandColorClosure.region {
+                case let .bottom(value):
+                    .bottom(value)
+                case let .top(value):
+                    .top(value)
+                }
+
+                if case WebViewRegion.top = webViewRegion, onlyBottom == true {
+                    continue
+                }
+
+                Task.detached(priority: .medium) { [brandColorClosure] in
+                    let result = await WebViewAverageColorCalculator().calculateAverageColor(
+                        for: webView,
+                        in: webViewRegion
+                    )
+
+                    switch result {
+                    case let .success(color):
+                        await brandColorClosure.closure(Color(color))
+                    case let .failure(failure):
+                        print("Failure: \(failure)")
+                    }
                 }
             }
         }
 
         func webView(_ webView: WKWebView, didFinish _: WKNavigation!) {
-            pickTopBrandColor(webView: webView)
+            pickBrandColors(webView: webView)
+
+            Task<Void, Never> {
+                guard let metadataClosure = websiteMetadataClosure else { return }
+                guard let metadata = try? await WebsiteMetadataExtractor().extractMetadata(from: webView).get() else { return }
+                metadataClosure(metadata)
+            }
         }
 
         func webView(_: WKWebView, didFail _: WKNavigation!, withError error: Error) {

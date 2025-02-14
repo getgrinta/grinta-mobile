@@ -14,45 +14,56 @@ enum WebViewRegion {
     case bottom(CGFloat)
 }
 
-/// Takes a snapshot of a WKWebView and calculates the average color of a specified region.
 @MainActor
 struct WebViewAverageColorCalculator {
     private let averageColorCalculator = AverageColorCalculator()
 
-    func calculateAverageColor(for webView: WKWebView, in region: WebViewRegion, completion: @escaping (Result<UIColor, WebViewColorCalculatorError>) -> Void) {
+    func calculateAverageColor(for webView: WKWebView,
+                               in region: WebViewRegion) async -> Result<UIColor, WebViewColorCalculatorError>
+    {
         let config = WKSnapshotConfiguration()
-
-        webView.takeSnapshot(with: config) { image, error in
-            guard let image else {
-                completion(.failure(.snapshotFailed(error: error)))
-                return
+        // Snapshot must be taken on the main thread.
+        let (image, error) = await withCheckedContinuation { continuation in
+            webView.takeSnapshot(with: config) { image, error in
+                continuation.resume(returning: (image, error))
             }
+        }
 
-            guard let ciImage = CIImage(image: image) else {
-                completion(.failure(.ciImageConversionFailed))
-                return
+        guard let image else {
+            return .failure(.snapshotFailed(error: error))
+        }
+
+        guard let ciImage = CIImage(image: image) else {
+            return .failure(.ciImageConversionFailed)
+        }
+
+        let imageExtent = ciImage.extent
+        let imageOrigin = imageExtent.origin
+        let imageHeight = imageExtent.height
+        let imageWidth = imageExtent.width
+
+        let regionRect = switch region {
+        case let .top(height):
+            CGRect(x: imageOrigin.x,
+                   y: imageOrigin.y + imageHeight - height,
+                   width: imageWidth,
+                   height: height)
+        case let .bottom(height):
+            CGRect(x: imageOrigin.x,
+                   y: imageOrigin.y,
+                   width: imageWidth,
+                   height: height)
+        }
+
+        // Offload the average color calculation to a background thread.
+        return await withCheckedContinuation { continuation in
+            Task.detached(priority: .userInitiated) { [image] in
+                let result = averageColorCalculator.calculateAverageColor(for: CIImage(image: image)!, in: regionRect)
+                // Resume on the main actor
+                await MainActor.run {
+                    continuation.resume(returning: result)
+                }
             }
-
-            let imageExtent = ciImage.extent
-            let imageOrigin = imageExtent.origin
-            let imageHeight = imageExtent.height
-            let imageWidth = imageExtent.width
-
-            let regionRect = switch region {
-            case let .top(height):
-                CGRect(x: imageOrigin.x,
-                       y: imageOrigin.y + imageHeight - height,
-                       width: imageWidth,
-                       height: height)
-            case let .bottom(height):
-                CGRect(x: imageOrigin.x,
-                       y: imageOrigin.y,
-                       width: imageWidth,
-                       height: height)
-            }
-
-            let result = averageColorCalculator.calculateAverageColor(for: ciImage, in: regionRect)
-            completion(result)
         }
     }
 }

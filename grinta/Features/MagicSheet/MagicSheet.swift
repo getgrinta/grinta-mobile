@@ -40,6 +40,7 @@ struct MagicSheet {
         case clearSearch
         case miniViewExpandTapped
         case performSuggestion(SearchSuggestion)
+        case archiveItem(HistoryItem)
         case submitSearch
         case sheetSizeChanged(CGSize)
         case presentationDetentChanged
@@ -48,15 +49,16 @@ struct MagicSheet {
         case delegate(Delegate)
     }
 
+    @Dependency(HistoryArchiveClient.self) var historyArchive
     @Dependency(SearchSuggestionClient.self) var searchSuggestionClient
     @Dependency(StartPageClient.self) var startPageClient
+    @Dependency(WebsiteMetadataStoreClient.self) var websiteMetadataClient
 
     var body: some ReducerOf<Self> {
         BindingReducer()
 
         Reduce { state, action in
             switch action {
-
             case .binding(\.presentationDetent):
                 return .send(.presentationDetentChanged)
 
@@ -73,22 +75,21 @@ struct MagicSheet {
             case let .searchTextChanged(newText):
                 guard state.searchText != newText else { return .none }
 
+//                guard newText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false else {
+//                    return .send(.clearSearch)
+//                }
+
                 let query = SearchQuery(newText)
                 state.searchText = query.term
                 state.searchBarAccessoriesVisible = query.isEmpty
 
-                return .merge(
-                    //.cancel(id: "search_suggestions"),
-                        .run { [searchSuggestionClient] send in
-                    //try await withTaskCancellation(id: "wow") {
-                        for await suggestions in try await searchSuggestionClient.suggestions(startPageClient: startPageClient, query: query) {
-                            await send(.replaceSearchSuggestions(suggestions))
-                        }
-                    //}
+                return .run { [searchSuggestionClient] send in
+                    for await suggestions in try await searchSuggestionClient.suggestions(startPageClient: startPageClient, websiteMetadataClient: websiteMetadataClient, historyArchive: historyArchive, query: query) {
+                        await send(.replaceSearchSuggestions(suggestions))
+                    }
                 }
-                // .debounce(id: "search_suggestions", for: .seconds(1), scheduler: DispatchQueue.main)
-                .cancellable(id: "search_suggestions", cancelInFlight: true)
-                    )
+                .cancellable(id: SearchSuggestionSearchCancelId(), cancelInFlight: true)
+
             case let .replaceSearchSuggestions(suggestions):
                 state.searchSuggestions = suggestions
                 return .none
@@ -96,17 +97,16 @@ struct MagicSheet {
             case .miniViewExpandTapped:
                 return .send(.changePresentationDetent(.medium))
 
-            case .sheetSizeChanged(let size):
+            case .sheetSizeChanged:
                 return .none
 
             case let .changePresentationDetent(detent):
+                print("Trying to change to \(detent)")
                 state.presentationDetent = detent
                 return .send(.presentationDetentChanged)
 
             case .clearSearch:
-                state.searchText = ""
-                state.searchSuggestions = []
-                return .none
+                return .send(.searchTextChanged(""))
 
             case let .performSuggestion(suggestion):
                 switch suggestion.type {
@@ -116,12 +116,20 @@ struct MagicSheet {
                     return .none
                 case .website:
                     return .merge(
-                        .send(.changePresentationDetent(.height(40))),
+                        .send(.archiveItem(HistoryItem(query: suggestion.title, type: .website))),
+                        .send(.changePresentationDetent(.height(40)), animation: .easeInOut),
                         .send(.clearSearch),
                         .openURL(suggestion.title)
                     )
                 case .search:
-                    return .none
+                    // Move to separate action
+                    let percentEncodedQuery = suggestion.title.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? suggestion.title
+                    let urlToOpen = "https://www.startpage.com/do/search?q=\(percentEncodedQuery)"
+                    return .merge(
+                        .send(.archiveItem(HistoryItem(query: suggestion.title, type: .search))),
+                        .openURL(urlToOpen),
+                        .send(.clearSearch), .send(.changePresentationDetent(.height(40)))
+                    )
                 }
 
             case .submitSearch:
@@ -138,13 +146,26 @@ struct MagicSheet {
                     urlToOpen = "https://www.startpage.com/do/search?q=\(percentEncodedQuery)"
                 }
 
-                return .merge(
-                    .send(.changePresentationDetent(.height(40))),
-                    .openURL(urlToOpen),
-                    .run { _ in
-                        await UIImpactFeedbackGenerator().impactOccurred(intensity: 0.7)
-                    }
+                return .concatenate(
+                    .merge(
+                        .send(.archiveItem(HistoryItem(query: state.searchText, type: isWebsiteUrl ? .website : .search))),
+                        .send(.changePresentationDetent(.height(40))),
+                        .openURL(urlToOpen),
+                        .run { _ in
+                            await UIImpactFeedbackGenerator().impactOccurred(intensity: 0.7)
+                        }
+                    ),
+                    .run { send in
+                        try await Task.sleep(for: .milliseconds(500))
+                        await send(.changePresentationDetent(.height(40)))
+                    },
+                    .send(.clearSearch)
                 )
+
+            case let .archiveItem(item):
+                return .run { _ in
+                    try await historyArchive.store(item: item)
+                }
 
             case .binding:
                 return .none
@@ -154,6 +175,8 @@ struct MagicSheet {
             }
         }
     }
+
+    private struct SearchSuggestionSearchCancelId: Hashable {}
 }
 
 private extension Effect where Action == MagicSheet.Action {

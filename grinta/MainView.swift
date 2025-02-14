@@ -7,20 +7,29 @@ struct MainView: View {
 
     @State private var showSheet = true
     @State private var settingsPresented = false
-    @State private var sheetColor = Color(uiColor: UIColor(red: 26 / 255, green: 26 / 255, blue: 26 / 255, alpha: 1))
+    @State private var topColor = Color(uiColor: UIColor(red: 26 / 255, green: 26 / 255, blue: 26 / 255, alpha: 1))
+    @State private var bottomColor = Color(uiColor: UIColor(red: 26 / 255, green: 26 / 255, blue: 26 / 255, alpha: 1))
 
     var body: some View {
         GeometryReader { proxy in
             VStack(spacing: 0) {
-                StatusBarCoverView(color: sheetColor, safeAreaInsets: proxy.safeAreaInsets)
+                StatusBarCoverView(color: topColor, safeAreaInsets: proxy.safeAreaInsets)
 
                 Group {
                     if let currentURL = store.currentURL {
                         WebView(url: currentURL)
-                            .onBrandColorChange { color in
+                            .onBrandColorChange(region: .top(20)) { color in
                                 withAnimation {
-                                    sheetColor = color
+                                    topColor = color
                                 }
+                            }
+                            .onBrandColorChange(region: .bottom(20)) { color in
+                                withAnimation {
+                                    bottomColor = color
+                                }
+                            }
+                            .onWebsiteMetadata { metadata in
+                                store.send(.websiteMetadataFetched(metadata))
                             }
                     }
                 }
@@ -32,7 +41,7 @@ struct MainView: View {
                 }
                 .animation(nil, value: store.currentURL)
 
-                BottomBarBackgroundView()
+                BottomBarBackgroundView(color: bottomColor)
             }
             .animation(nil, value: store.currentURL)
             .sheet(isPresented: $showSheet) {
@@ -40,9 +49,6 @@ struct MainView: View {
                 MagicSheetView(store: store.scope(state: \.magicSheet, action: \.magicSheet), settingsPresented: {
                     settingsPresented = true
                 })
-                .sheet(isPresented: $settingsPresented) {
-                    Text("Settings")
-                }
             }
             .background(Color(uiColor: UIColor(red: 26 / 255, green: 26 / 255, blue: 26 / 255, alpha: 1)))
             .ignoresSafeArea(.all)
@@ -51,9 +57,10 @@ struct MainView: View {
 }
 
 private struct BottomBarBackgroundView: View {
+    let color: Color
+
     var body: some View {
-        // For now white - later replace with non-visible part of webview
-        Color.white
+        color
             .animation(nil, value: true)
     }
 }

@@ -9,6 +9,7 @@ struct Main {
     enum Action: BindableAction {
         case binding(BindingAction<State>)
         case magicSheet(MagicSheet.Action)
+        case websiteMetadataFetched(WebsiteMetadata)
     }
 
     @ObservableState
@@ -18,6 +19,7 @@ struct Main {
     }
 
     @Dependency(LLMClient.self) var llmClient
+    @Dependency(WebsiteMetadataStoreClient.self) var websiteMetadataClient
 
     var body: some ReducerOf<Self> {
         BindingReducer()
@@ -35,6 +37,11 @@ struct Main {
 
                 default:
                     return .none
+                }
+
+            case let .websiteMetadataFetched(metadata):
+                return .run { _ in
+                    try await websiteMetadataClient.store(item: metadata, hostname: metadata.host.replacingOccurrences(of: "https://", with: "").replacingOccurrences(of: "http://", with: "").replacingOccurrences(of: "www.", with: ""))
                 }
             }
         }
