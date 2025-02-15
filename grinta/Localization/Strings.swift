@@ -18,6 +18,8 @@ enum L10n {
     static let search = L10n.tr("Localizable", "Search", fallback: "Search")
     /// Search Web
     static let searchWeb = L10n.tr("Localizable", "SearchWeb", fallback: "Search Web")
+    /// Website
+    static let website = L10n.tr("Localizable", "Website", fallback: "Website")
 }
 
 // swiftlint:enable explicit_type_interface function_parameter_count identifier_name line_length

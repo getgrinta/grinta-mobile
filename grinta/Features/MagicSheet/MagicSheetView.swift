@@ -1,5 +1,4 @@
 import ComposableArchitecture
-import RegexBuilder
 import SwiftUI
 
 struct VisualEffectBlur: UIViewRepresentable {
@@ -13,10 +12,13 @@ struct VisualEffectBlur: UIViewRepresentable {
 }
 
 struct MagicSheetView: View {
+    @Environment(\.colorScheme) private var colorScheme
     @Bindable var store: StoreOf<MagicSheet>
 
     @State var sheetHeight: CGFloat = 400 // Can this be optional? 400 is weird
+    @State var safeAreaInsets: EdgeInsets = .init(_all: 0)
     @State var cornerRadius: CGFloat = 48
+    @FocusState var focusedField: MagicSheet.State.Field?
 
     let settingsPresented: () -> Void
 
@@ -25,13 +27,16 @@ struct MagicSheetView: View {
             VStack(spacing: 0) {
                 ZStack(alignment: .top) {
                     FullView()
-                        .opacity(min(1, max(0, (sheetHeight - CGFloat(80)) / CGFloat(40))))
+                        .opacity(min(1, max(0, (sheetHeight - CGFloat(80)) / CGFloat(safeAreaInsets.bottom))))
                         .allowsHitTesting(store.mode == .full)
 
                     MiniView()
-                        .opacity(min(1, max(0, CGFloat(2) - sheetHeight / CGFloat(50))))
+                        .opacity(min(1, max(0, CGFloat(2) - sheetHeight / CGFloat(safeAreaInsets.bottom))))
                         .allowsHitTesting(store.mode == .minimized)
                 }
+            }
+            .onAppear {
+                safeAreaInsets = viewSize.safeAreaInsets
             }
             .onChange(of: viewSize.size) { _, newSize in
                 cornerRadius = max(0, min(48, newSize.height - 120))
@@ -40,12 +45,12 @@ struct MagicSheetView: View {
                 store.send(.sheetSizeChanged(newSize))
             }
         }
+        .bind($store.focusedField, to: $focusedField)
         .presentationDetents(MagicSheet.State.presentationDetents, selection: $store.presentationDetent)
         .interactiveDismissDisabled()
         .presentationBackground(.thinMaterial)
         .presentationDragIndicator(store.mode == .full ? .visible : .hidden)
         .presentationCornerRadius(cornerRadius)
-        .ignoresSafeArea(.all)
         .presentationBackgroundInteraction(.enabled)
     }
 
@@ -56,7 +61,7 @@ struct MagicSheetView: View {
             } label: {
                 Image(systemSymbol: .plus)
                     .fontWeight(.bold)
-                    .foregroundStyle(Color.themeSecondary)
+                    .foregroundStyle(Color.theme)
             }
             .padding(.top, 12)
         }
@@ -75,6 +80,7 @@ struct MagicSheetView: View {
                         .keyboardType(.webSearch)
                         .submitLabel(.go)
                         .autocorrectionDisabled()
+                        .focused($focusedField, equals: MagicSheet.State.Field.search)
                         .textInputAutocapitalization(.never)
                         .onKeyPress { _ in
                             UIImpactFeedbackGenerator().prepare()
@@ -83,7 +89,7 @@ struct MagicSheetView: View {
                         .onSubmit {
                             store.send(.submitSearch)
                         }
-                        .foregroundColor(.neutral200)
+                        .foregroundStyle(.neutral600)
                         .font(.title3)
 
                         if store.searchBarContainsText {
@@ -100,7 +106,7 @@ struct MagicSheetView: View {
                             Image(systemSymbol: .xCircleFill)
                                 .aspectRatio(contentMode: .fit)
                                 .font(.headline)
-                                .foregroundColor(.neutral300)
+                                .foregroundStyle(.neutral600)
                                 .opacity(0.8)
                                 .padding(20)
                         }
@@ -112,8 +118,9 @@ struct MagicSheetView: View {
                 if store.searchBarAccessoriesVisible {
                     RoundedButton {} label: {
                         Image(.layoutGrid)
+                            .renderingMode(.template)
                             .font(.title3)
-                            .foregroundStyle(.themePrimary)
+                            .foregroundStyle(Color.theme)
                     }
                     .foregroundColor(.neutral400)
                     .font(.title3)
@@ -123,8 +130,9 @@ struct MagicSheetView: View {
                         settingsPresented()
                     } label: {
                         Image(.menu)
+                            .renderingMode(.template)
                             .font(.title3)
-                            .foregroundStyle(.themeSecondary)
+                            .foregroundStyle(.theme)
                     }
                     .foregroundColor(.neutral400)
                     .font(.title3)
@@ -139,13 +147,7 @@ struct MagicSheetView: View {
                     Button {
                         store.send(.performSuggestion(suggestion))
                     } label: {
-                        ListEntryView(
-                            image: suggestion.image,
-                            imageURL: suggestion.imageURL.flatMap { URL(string: $0) },
-                            title: suggestion.title,
-                            type: suggestion.type.title,
-                            searchText: store.searchText
-                        )
+                        ListEntryView(suggestion: suggestion, searchText: store.searchText)
                     }
                     .buttonStyle(MagicSheetListButtonStyle())
                     .listRowSeparator(.hidden)
@@ -157,49 +159,54 @@ struct MagicSheetView: View {
         }
     }
 
-    private func ListEntryView(image: ImageResource?, imageURL: URL?, title: String, type: String, searchText: String) -> some View {
+    private func ListEntryView(suggestion: SearchSuggestion, searchText: String) -> some View {
         HStack(spacing: 12) {
-            if let imageURL {
+            if let imageURL = suggestion.imageURL.flatMap({ URL(string: $0) }) {
                 AsyncImage(url: imageURL, content: { image in
                     image
                         .resizable()
                         .aspectRatio(contentMode: .fit)
                         .layoutPriority(0)
-                        .frame(width: 30)
+                        .frame(width: 28)
 
                 }, placeholder: {
-                    Image(image ?? .globe)
+                    Image(suggestion.image ?? .globe)
                 })
             } else {
-                Image(image ?? ImageResource.globe)
+                Image(suggestion.origin == .history ? ImageResource.history : (suggestion.image ?? ImageResource.globe))
                     .resizable()
                     .foregroundStyle(.neutral400)
                     .tint(Color.white)
                     .aspectRatio(contentMode: .fit)
-                    .frame(width: 30)
+                    .frame(width: 28)
                     .layoutPriority(0)
-                    .font(.title3)
+                    .font(.body)
             }
 
             Text({
-                var attributedString = AttributedString(title)
-                attributedString.font = .system(size: 20, weight: .semibold)
+                let isInvertedHighlighting = (suggestion.origin == .history && suggestion.type == .website)
+                var attributedString = AttributedString(suggestion.title)
+                attributedString.font = .system(.body, weight: isInvertedHighlighting ? .regular : .semibold)
+                attributedString.foregroundColor = .neutral600
 
-                if let range = attributedString.range(of: searchText) {
-                    attributedString[range].font = .system(size: 20, weight: .regular)
+                if suggestion.title.lowercased() != searchText.lowercased() {
+                    if let range = attributedString.range(of: searchText) {
+                        attributedString[range].font = .system(.body, weight: isInvertedHighlighting ? .semibold : .regular)
+                    }
                 }
 
                 return attributedString
             }())
+                .lineLimit(2)
                 .layoutPriority(1)
 
-            if type.hasPrefix("Search") == false {
+            if suggestion.type != .search, suggestion.type != .website {
                 Spacer()
 
                 RoundedView {
-                    Text(type)
-                        .foregroundColor(.neutral50)
-                        .font(.subheadline)
+                    Text(suggestion.type.title)
+                        .tint(.neutral600)
+                        .font(.body)
                 }
                 .layoutPriority(1)
             }

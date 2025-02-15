@@ -22,7 +22,6 @@ private actor WebsiteMetadataStore {
     private var items: [String: WebsiteMetadata] = [:]
 
     func store(item: WebsiteMetadata, for hostname: String) {
-        print("Storing \(item) for \(hostname)")
         items[hostname] = item
     }
 

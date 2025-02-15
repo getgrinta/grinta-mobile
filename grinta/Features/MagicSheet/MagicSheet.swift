@@ -1,7 +1,5 @@
 import ComposableArchitecture
-import RegexBuilder
 import SwiftUI
-import WebURL
 
 @Reducer
 struct MagicSheet {
@@ -20,6 +18,12 @@ struct MagicSheet {
         var mode: Mode = .full
         var searchBarAccessoriesVisible = true
         var searchSuggestions: [SearchSuggestion] = []
+
+        enum Field: Hashable, Sendable {
+            case search
+        }
+
+        var focusedField: Field? = .search
 
         enum Mode: Equatable {
             case minimized, full
@@ -75,12 +79,8 @@ struct MagicSheet {
             case let .searchTextChanged(newText):
                 guard state.searchText != newText else { return .none }
 
-//                guard newText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false else {
-//                    return .send(.clearSearch)
-//                }
-
                 let query = SearchQuery(newText)
-                state.searchText = query.term
+                state.searchText = newText
                 state.searchBarAccessoriesVisible = query.isEmpty
 
                 return .run { [searchSuggestionClient] send in
@@ -95,13 +95,27 @@ struct MagicSheet {
                 return .none
 
             case .miniViewExpandTapped:
-                return .send(.changePresentationDetent(.medium))
+                state.focusedField = .search
+                return .merge(
+                    .send(.changePresentationDetent(.medium)),
+                    .run { [searchSuggestionClient, state] send in
+                        let query = SearchQuery(state.searchText)
+                        for await suggestions in try await searchSuggestionClient.suggestions(
+                            startPageClient: startPageClient,
+                            websiteMetadataClient: websiteMetadataClient,
+                            historyArchive: historyArchive,
+                            query: query
+                        ) {
+                            await send(.replaceSearchSuggestions(suggestions))
+                        }
+                    }
+                    .cancellable(id: SearchSuggestionSearchCancelId(), cancelInFlight: true)
+                )
 
             case .sheetSizeChanged:
                 return .none
 
             case let .changePresentationDetent(detent):
-                print("Trying to change to \(detent)")
                 state.presentationDetent = detent
                 return .send(.presentationDetentChanged)
 
@@ -116,17 +130,17 @@ struct MagicSheet {
                     return .none
                 case .website:
                     return .merge(
-                        .send(.archiveItem(HistoryItem(query: suggestion.title, type: .website))),
+                        // .send(.archiveItem(HistoryItem(query: suggestion.title, type: .website))),
                         .send(.changePresentationDetent(.height(40)), animation: .easeInOut),
-                        .send(.clearSearch),
-                        .openURL(suggestion.title)
+                        // .send(.clearSearch),
+                        .openURL(suggestion.url)
                     )
                 case .search:
                     // Move to separate action
                     let percentEncodedQuery = suggestion.title.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? suggestion.title
                     let urlToOpen = "https://www.startpage.com/do/search?q=\(percentEncodedQuery)"
                     return .merge(
-                        .send(.archiveItem(HistoryItem(query: suggestion.title, type: .search))),
+                        // .send(.archiveItem(HistoryItem(query: suggestion.title, type: .search))),
                         .openURL(urlToOpen),
                         .send(.clearSearch), .send(.changePresentationDetent(.height(40)))
                     )

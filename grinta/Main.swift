@@ -31,7 +31,6 @@ struct Main {
             case let .magicSheet(action):
                 switch action {
                 case let .delegate(.openURL(url)):
-                    print("REPLACE to \(url)")
                     state.currentURL = url
                     return .none
 

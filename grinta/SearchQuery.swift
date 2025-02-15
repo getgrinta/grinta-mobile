@@ -6,11 +6,11 @@ struct SearchQuery: ExpressibleByStringLiteral, CustomStringConvertible {
     let term: String
 
     init(_ string: String) {
-        term = string
+        term = string.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     init(stringLiteral value: StringLiteralType) {
-        term = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.init(value)
     }
 
     var description: String {

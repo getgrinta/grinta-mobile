@@ -15,7 +15,7 @@ enum SuggestionType {
         case .note:
             L10n.noteCreate
         case .website:
-            L10n.searchWeb
+            L10n.website
         case .search:
             L10n.search
         }
@@ -37,6 +37,11 @@ private actor SuggestionCache {
     }
 }
 
+enum SuggestionOrigin {
+    case suggested
+    case history
+}
+
 struct SearchSuggestion: Equatable, Identifiable {
     var id: Int {
         var hasher = Hasher()
@@ -46,9 +51,11 @@ struct SearchSuggestion: Equatable, Identifiable {
     }
 
     let title: String
+    let url: String
     let image: ImageResource?
     let imageURL: String?
     let type: SuggestionType
+    let origin: SuggestionOrigin
 }
 
 @DependencyClient
@@ -75,13 +82,10 @@ extension SearchSuggestionClient: DependencyKey {
                 var metadata: [String: WebsiteMetadata] = [:]
 
                 for historyItem in historyItems where SearchQuery(historyItem.query).isWebsiteUrl {
-                    print(historyItem)
                     guard let metadataItem = await (try? websiteMetadataClient.retrieve(hostname: historyItem.query)) else { continue }
-                    print("GO")
+
                     metadata[historyItem.query.replacingOccurrences(of: "https://", with: "").replacingOccurrences(of: "http://", with: "").replacingOccurrences(of: "www.", with: "")] = metadataItem
                 }
-
-                print(metadata)
 
                 return AsyncStream([SearchSuggestion].self) { continuation in
                     continuation.yield(SuggestionComposer.compose(history: historyItems, remote: [], query: query, metadata: metadata))
@@ -110,7 +114,7 @@ extension SearchSuggestionClient: DependencyKey {
                         let searchSuggestions = searchResults
                             .filter { $0.lowercased() != query.term.lowercased() }
                             .map {
-                                SearchSuggestion(title: $0, image: .search, imageURL: nil, type: .search)
+                                SearchSuggestion(title: $0, url: query.term, image: .search, imageURL: nil, type: .search, origin: .suggested)
                             }
 
                         remoteSuggestionCache.store(query: query.term, suggestions: searchSuggestions)
@@ -140,14 +144,14 @@ enum SuggestionComposer {
 
         if query.isEmpty == false {
             suggestions = [
-                SearchSuggestion(title: query.term, image: .sparkles, imageURL: nil, type: .ai),
-                SearchSuggestion(title: query.term, image: .stickyNote, imageURL: nil, type: .note),
+                SearchSuggestion(title: query.term, url: query.term, image: .sparkles, imageURL: nil, type: .ai, origin: .suggested),
+                SearchSuggestion(title: query.term, url: query.term, image: .stickyNote, imageURL: nil, type: .note, origin: .suggested),
             ]
         }
 
         if query.isWebsiteUrl {
             let metadata = metadata[query.term.replacingOccurrences(of: "https://", with: "").replacingOccurrences(of: "http://", with: "").replacingOccurrences(of: "www.", with: "")]
-            suggestions.append(SearchSuggestion(title: metadata?.description ?? query.term, image: metadata == nil ? .globe : nil, imageURL: metadata?.favicon, type: .website))
+            suggestions.append(SearchSuggestion(title: metadata?.description ?? query.term, url: query.term, image: metadata == nil ? .globe : nil, imageURL: metadata?.favicon, type: .website, origin: .suggested))
         }
 
         let searchHistoryMatcher = SearchHistoryMatcher()
@@ -156,18 +160,19 @@ enum SuggestionComposer {
         let matchingHistoryItems = searchHistoryMatcher.search(query: query.term, limit: 3)
         let historySuggestions = matchingHistoryItems
             .map {
+                // Clean this up...
                 let metadataItem = metadata[$0.query.replacingOccurrences(of: "https://", with: "").replacingOccurrences(of: "http://", with: "").replacingOccurrences(of: "www.", with: "")]
 
-                print($0.query.replacingOccurrences(of: "https://", with: "").replacingOccurrences(of: "http://", with: "").replacingOccurrences(of: "www.", with: ""))
-
-                print(metadata)
                 return SearchSuggestion(
                     title: metadataItem?.title ?? $0.query,
+                    url: $0.query,
                     image: .search,
                     imageURL: metadataItem?.favicon,
-                    type: .search
+                    type: SearchQuery($0.query).isWebsiteUrl ? .website : .search,
+                    origin: .history
                 )
             }
+            .sorted(by: { (a: SearchSuggestion, b: SearchSuggestion) in a.title.localizedCaseInsensitiveCompare(b.title) == .orderedAscending })
             // display single item + (3 - no. of search suggestions - additional ones)
             .prefix(1 + max(0, 2 - suggestions.count))
 

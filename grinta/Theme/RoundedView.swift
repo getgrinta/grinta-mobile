@@ -11,11 +11,11 @@ struct RoundedView<Embedded: View>: View {
         embedded()
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
-            .background(.white.opacity(0.1))
+            .background(.neutral600.opacity(0.1))
             .mask(RoundedRectangle(cornerRadius: 24))
             .overlay(
                 RoundedRectangle(cornerRadius: 24)
-                    .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                    .stroke(.neutral600.opacity(0.2), lineWidth: 1)
             )
     }
 }

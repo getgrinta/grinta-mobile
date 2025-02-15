@@ -7,8 +7,8 @@ struct MainView: View {
 
     @State private var showSheet = true
     @State private var settingsPresented = false
-    @State private var topColor = Color(uiColor: UIColor(red: 26 / 255, green: 26 / 255, blue: 26 / 255, alpha: 1))
-    @State private var bottomColor = Color(uiColor: UIColor(red: 26 / 255, green: 26 / 255, blue: 26 / 255, alpha: 1))
+    @State private var topColor = Color.neutral100
+    @State private var bottomColor = Color.neutral100
 
     var body: some View {
         GeometryReader { proxy in
@@ -16,22 +16,20 @@ struct MainView: View {
                 StatusBarCoverView(color: topColor, safeAreaInsets: proxy.safeAreaInsets)
 
                 Group {
-                    if let currentURL = store.currentURL {
-                        WebView(url: currentURL)
-                            .onBrandColorChange(region: .top(20)) { color in
-                                withAnimation {
-                                    topColor = color
-                                }
+                    WebView(url: store.currentURL)
+                        .onBrandColorChange(region: .top(20)) { color in
+                            withAnimation {
+                                topColor = color
                             }
-                            .onBrandColorChange(region: .bottom(20)) { color in
-                                withAnimation {
-                                    bottomColor = color
-                                }
+                        }
+                        .onBrandColorChange(region: .bottom(20)) { color in
+                            withAnimation {
+                                bottomColor = color
                             }
-                            .onWebsiteMetadata { metadata in
-                                store.send(.websiteMetadataFetched(metadata))
-                            }
-                    }
+                        }
+                        .onWebsiteMetadata { metadata in
+                            store.send(.websiteMetadataFetched(metadata))
+                        }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 // Don't go below bottom safe area inset
@@ -61,7 +59,6 @@ private struct BottomBarBackgroundView: View {
 
     var body: some View {
         color
-            .animation(nil, value: true)
     }
 }
 
