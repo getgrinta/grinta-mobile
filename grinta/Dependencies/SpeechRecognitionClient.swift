@@ -1,24 +1,49 @@
 @preconcurrency import AVFoundation
 import ComposableArchitecture
 import Foundation
+import NaturalLanguage
 @preconcurrency import Speech
 
 enum SpeechRecognitionClientError: Error {
     case speechRecognizerUnavailable
     case audioEngineError(String)
+    case noSupportedLocales
 }
 
-final class SpeechRecognitionClientImpl: @unchecked Sendable {
-    let audioEngine = AVAudioEngine()
-    var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
-    var recognitionTask: SFSpeechRecognitionTask?
-    let speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-US"))
-    var lastSpeechTime = Date()
-    var lastString = ""
+private struct RecognitionResult: Comparable {
+    let text: String
+    let confidence: Float
+    let locale: Locale
 
+    static func < (lhs: RecognitionResult, rhs: RecognitionResult) -> Bool {
+        lhs.confidence < rhs.confidence
+    }
+}
+
+final class SpeechRecognitionService: @unchecked Sendable {
+    let audioEngine = AVAudioEngine()
+    var recognitionRequests: [SFSpeechAudioBufferRecognitionRequest] = []
+    var recognitionTasks: [SFSpeechRecognitionTask] = []
+    var speechRecognizers: [SFSpeechRecognizer] = []
     private var operationQueue = DispatchQueue(label: "com.grinta.speechrecognitionclientimpl")
 
+    init() {
+        // Get supported locales that match user preferences
+        let supportedLocales = SFSpeechRecognizer.supportedLocales()
+        let preferredLanguageIDs = Set(Locale.preferredLanguages)
+
+        speechRecognizers = supportedLocales
+            .filter { preferredLanguageIDs.contains($0.identifier) }
+            .compactMap { SFSpeechRecognizer(locale: $0) }
+
+        print("Initialized speech recognizers for locales: \(speechRecognizers.map(\.locale.identifier))")
+    }
+
     func requestAuthorization() async throws {
+        guard !speechRecognizers.isEmpty else {
+            throw SpeechRecognitionClientError.noSupportedLocales
+        }
+
         try await withCheckedThrowingContinuation { continuation in
             SFSpeechRecognizer.requestAuthorization { authStatus in
                 switch authStatus {
@@ -34,8 +59,9 @@ final class SpeechRecognitionClientImpl: @unchecked Sendable {
     }
 
     func startRecording() async throws -> AsyncStream<String> {
-        recognitionTask?.cancel()
-        recognitionTask = nil
+        // Cancel any existing tasks
+        recognitionTasks.forEach { $0.cancel() }
+        recognitionTasks = []
 
         let audioSession = AVAudioSession.sharedInstance()
         do {
@@ -45,73 +71,139 @@ final class SpeechRecognitionClientImpl: @unchecked Sendable {
             throw SpeechRecognitionClientError.audioEngineError(error.localizedDescription)
         }
 
-        let recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
-        recognitionRequest.shouldReportPartialResults = true
-
-        operationQueue.sync {
-            self.recognitionRequest = recognitionRequest
+        recognitionRequests = (0 ..< speechRecognizers.count).map { _ in
+            let request = SFSpeechAudioBufferRecognitionRequest()
+            request.shouldReportPartialResults = true
+            return request
         }
 
         let inputNode = audioEngine.inputNode
+        let recordingFormat = inputNode.outputFormat(forBus: 0)
 
-        let stream = AsyncStream<String> { continuation in
-            self.recognitionTask = self.speechRecognizer?.recognitionTask(with: recognitionRequest) { result, error in
-                if let result {
-                    if result.bestTranscription.formattedString != self.lastString {
-                        self.lastSpeechTime = Date()
-                        self.lastString = result.bestTranscription.formattedString
-                        continuation.yield(result.bestTranscription.formattedString)
+        let localeResults = LocaleResults()
+        let speechTimer = SpeechTimer()
+
+        return AsyncStream<String> { continuation in
+            Task {
+                do {
+                    try await withThrowingTaskGroup(of: Void.self) { group in
+                        // Check if should stop recording
+                        group.addTask {
+                            while await speechTimer.shouldStopRecording() {
+                                try Task.checkCancellation()
+                                try await Task.sleep(for: .milliseconds(100))
+
+                                self.recognitionTasks.forEach { $0.cancel() }
+                                continuation.finish()
+                            }
+                        }
+
+                        // Add a task for each supported locale
+                        for (index, recognizer) in speechRecognizers.enumerated() {
+                            let request = self.recognitionRequests[index]
+                            let recognitionResults = AsyncStream<RecognitionResult> { continuation in
+
+                                let languageRecognizer = NLLanguageRecognizer()
+                                // Although we could have gotten a result from the recognizer
+                                // it doesn't mean it's good quality in the target language.
+                                // Use NLP to get a confidence of that language.
+
+                                // Limit the languages to the target language only
+                                if let languageCode = recognizer.locale.language.languageCode {
+                                    languageRecognizer.languageConstraints = [NLLanguage(languageCode.identifier)]
+                                }
+
+                                let task = recognizer.recognitionTask(with: request) { result, _ in
+                                    if let result {
+                                        languageRecognizer.reset()
+                                        languageRecognizer.processString(result.bestTranscription.formattedString)
+                                        let languageHypothesis = languageRecognizer.languageHypotheses(withMaximum: 1).first
+
+                                        let currentResult = RecognitionResult(
+                                            text: result.bestTranscription.formattedString,
+                                            confidence: Float(languageHypothesis?.value ?? 0),
+                                            locale: recognizer.locale
+                                        )
+                                        continuation.yield(currentResult)
+                                    }
+
+                                    if Task.isCancelled {
+                                        self.recognitionTasks.forEach { $0.cancel() }
+                                        continuation.finish()
+                                    }
+                                }
+                                self.recognitionTasks.append(task)
+                            }
+
+                            group.addTask { [locale = recognizer.locale] in
+                                for await result in recognitionResults {
+                                    guard Task.isCancelled == false else {
+                                        continuation.finish()
+                                        break
+                                    }
+                                    await localeResults.update(result, for: locale)
+                                }
+                            }
+                        }
+
+                        group.addTask {
+                            while await speechTimer.shouldStopRecording() == false, Task.isCancelled == false {
+                                try Task.checkCancellation()
+                                try await Task.sleep(for: .milliseconds(100))
+
+                                // Pick the result with the highest confidence of being a query
+                                // in a given language.
+                                if let bestResult = await localeResults.highestConfidenceResult() {
+                                    let currentText = await speechTimer.lastEmittedText
+
+                                    if bestResult.text != currentText {
+                                        await speechTimer.updateLastEmittedText(bestResult.text, at: Date())
+                                        continuation.yield(bestResult.text)
+                                    }
+                                }
+                            }
+
+                            continuation.finish()
+                        }
+
+                        try await group.waitForAll()
                     }
-                }
+                } catch {
+                    print(error)
 
-                if error != nil || result?.isFinal ?? false {
-                    self.audioEngine.stop()
-                    inputNode.removeTap(onBus: 0)
-                    self.recognitionRequest = nil
-                    self.recognitionTask = nil
                     continuation.finish()
+                    stopRecording()
                 }
             }
 
-            let recordingFormat = inputNode.outputFormat(forBus: 0)
-            inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { buffer, _ in
-                recognitionRequest.append(buffer)
-
-                let quietDuration = Date().timeIntervalSince(self.lastSpeechTime)
-                let didInitialTimePass = self.lastString == "" && quietDuration >= 3
-                let didPostSpeechTimePass = self.lastString != "" && quietDuration >= 1.5
-
-                if didInitialTimePass || didPostSpeechTimePass {
-                    continuation.finish()
-                    self.stopRecording()
-                }
+            inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { [weak self] buffer, _ in
+                self?.recognitionRequests.forEach { $0.append(buffer) }
             }
 
-            self.audioEngine.prepare()
+            audioEngine.prepare()
 
             do {
-                try self.audioEngine.start()
-                lastString = ""
-                lastSpeechTime = Date()
+                try audioEngine.start()
             } catch {
                 continuation.finish()
             }
 
-            continuation.onTermination = { [recognitionRequest, audioEngine, recognitionTask] _ in
-                audioEngine.stop()
-                recognitionRequest.endAudio()
-                recognitionTask?.cancel()
+            continuation.onTermination = { [weak self] _ in
+                self?.stopRecording()
             }
         }
-
-        return stream
     }
 
     func stopRecording() {
         operationQueue.sync {
             audioEngine.stop()
-            recognitionRequest?.endAudio()
-            recognitionTask?.cancel()
+            audioEngine.inputNode.removeTap(onBus: 0)
+
+            recognitionRequests.forEach { $0.endAudio() }
+            recognitionTasks.forEach { $0.cancel() }
+
+            recognitionRequests = []
+            recognitionTasks = []
 
             do {
                 try AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
@@ -131,12 +223,44 @@ struct SpeechRecognitionClient {
 
 extension SpeechRecognitionClient: DependencyKey {
     static let liveValue: Self = {
-        // Store the AVAudioEngine and related state in this instance
-        let clientImpl = SpeechRecognitionClientImpl()
+        let service = SpeechRecognitionService()
         return Self(
-            requestAuthorization: { try await clientImpl.requestAuthorization() },
-            startRecording: { try await clientImpl.startRecording() },
-            stopRecording: { clientImpl.stopRecording() }
+            requestAuthorization: { try await service.requestAuthorization() },
+            startRecording: { try await service.startRecording() },
+            stopRecording: { service.stopRecording() }
         )
     }()
+}
+
+private actor LocaleResults {
+    private var results: [Locale: RecognitionResult] = [:]
+
+    func update(_ result: RecognitionResult, for locale: Locale) {
+        results[locale] = result
+    }
+
+    func highestConfidenceResult() -> RecognitionResult? {
+        results.values.max()
+    }
+
+    func clear() {
+        results.removeAll()
+    }
+}
+
+private actor SpeechTimer {
+    private var lastSpeechTime = Date()
+    private(set) var lastEmittedText = ""
+
+    func updateLastEmittedText(_ text: String, at date: Date) {
+        lastEmittedText = text
+        lastSpeechTime = date
+    }
+
+    func shouldStopRecording() -> Bool {
+        let quietDuration = Date().timeIntervalSince(lastSpeechTime)
+        let didInitialTimePass = lastEmittedText.isEmpty && quietDuration >= 3
+        let didPostSpeechTimePass = !lastEmittedText.isEmpty && quietDuration >= 1.5
+        return didInitialTimePass || didPostSpeechTimePass
+    }
 }
