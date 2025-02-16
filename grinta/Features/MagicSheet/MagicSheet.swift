@@ -18,6 +18,7 @@ struct MagicSheet {
         var mode: Mode = .full
         var searchBarAccessoriesVisible = true
         var searchSuggestions: [SearchSuggestion] = []
+        var isRecognizingVoice = false
 
         enum Field: Hashable, Sendable {
             case search
@@ -46,8 +47,10 @@ struct MagicSheet {
         case performSuggestion(SearchSuggestion)
         case archiveItem(HistoryItem)
         case submitSearch
+        case stoppedRecognizingVoice
         case sheetSizeChanged(CGSize)
         case presentationDetentChanged
+        case voiceRecognitionTapped
         case replaceSearchSuggestions([SearchSuggestion])
         case binding(BindingAction<State>)
         case delegate(Delegate)
@@ -57,6 +60,7 @@ struct MagicSheet {
     @Dependency(SearchSuggestionClient.self) var searchSuggestionClient
     @Dependency(StartPageClient.self) var startPageClient
     @Dependency(WebsiteMetadataStoreClient.self) var websiteMetadataClient
+    @Dependency(SpeechRecognitionClient.self) var speechRecognitionClient
 
     var body: some ReducerOf<Self> {
         BindingReducer()
@@ -75,6 +79,35 @@ struct MagicSheet {
                 }
 
                 return .none
+
+            case .stoppedRecognizingVoice:
+                state.isRecognizingVoice = false
+
+                let query = state.searchText
+                guard SearchQuery(query).isEmpty == false else { return .none }
+
+                let percentEncodedQuery = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query
+                let urlToOpen = "https://www.startpage.com/do/search?q=\(percentEncodedQuery)"
+                return .merge(
+                    .send(.archiveItem(HistoryItem(query: query, type: .search))),
+                    .openURL(urlToOpen),
+                    .send(.clearSearch), .send(.changePresentationDetent(.height(40)))
+                )
+
+            case .voiceRecognitionTapped:
+                guard state.isRecognizingVoice == false else { return .none }
+                state.isRecognizingVoice = true
+                return .run(operation: { send in
+                    try await speechRecognitionClient.requestAuthorization()
+
+                    for await message in try await speechRecognitionClient.startRecording() {
+                        await send(.searchTextChanged(message))
+                    }
+
+                    await send(.stoppedRecognizingVoice, animation: .easeInOut)
+                }, catch: { _, send in
+                    await send(.stoppedRecognizingVoice, animation: .easeInOut)
+                })
 
             case let .searchTextChanged(newText):
                 guard state.searchText != newText else { return .none }
@@ -130,7 +163,7 @@ struct MagicSheet {
                     return .none
                 case .website:
                     return .merge(
-                        // .send(.archiveItem(HistoryItem(query: suggestion.title, type: .website))),
+                        .send(.archiveItem(HistoryItem(query: suggestion.title, type: .website))),
                         .send(.changePresentationDetent(.height(40)), animation: .easeInOut),
                         // .send(.clearSearch),
                         .openURL(suggestion.url)
@@ -140,7 +173,7 @@ struct MagicSheet {
                     let percentEncodedQuery = suggestion.title.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? suggestion.title
                     let urlToOpen = "https://www.startpage.com/do/search?q=\(percentEncodedQuery)"
                     return .merge(
-                        // .send(.archiveItem(HistoryItem(query: suggestion.title, type: .search))),
+                        .send(.archiveItem(HistoryItem(query: suggestion.title, type: .search))),
                         .openURL(urlToOpen),
                         .send(.clearSearch), .send(.changePresentationDetent(.height(40)))
                     )

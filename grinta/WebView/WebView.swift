@@ -53,6 +53,8 @@ struct WebView: UIViewRepresentable {
             forMainFrameOnly: true
         )
 
+        print("Adding user scripts yo")
+
         configuration.userContentController.addUserScript(sourceScript)
         configuration.userContentController.add(context.coordinator, name: UserHandler.source.rawValue)
 
@@ -164,8 +166,12 @@ struct WebView: UIViewRepresentable {
 
             Task {
                 guard let metadataClosure = websiteMetadataClosure else { return }
-                guard let metadata = try? WebsiteMetadataExtractor().extractMetadata(fromHTML: htmlString, host: host).get() else { return }
-                metadataClosure(metadata)
+                do {
+                    let metadata = try WebsiteMetadataExtractor().extractMetadata(fromHTML: htmlString, host: host).get()
+                    metadataClosure(metadata)
+                } catch {
+                    print("Failed to decode metadata: \(error)")
+                }
             }
         }
 

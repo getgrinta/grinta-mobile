@@ -10,6 +10,7 @@
 		4923EE8F2D56915100134534 /* SFSafeSymbols in Frameworks */ = {isa = PBXBuildFile; productRef = 4923EE8E2D56915100134534 /* SFSafeSymbols */; };
 		495141112D5CE59200FD2041 /* WebURL in Frameworks */ = {isa = PBXBuildFile; productRef = 495141102D5CE59200FD2041 /* WebURL */; };
 		495141862D5FEFC500FD2041 /* SwiftSoup in Frameworks */ = {isa = PBXBuildFile; productRef = 495141852D5FEFC500FD2041 /* SwiftSoup */; };
+		495141C22D61178D00FD2041 /* SwiftUIIntrospect in Frameworks */ = {isa = PBXBuildFile; productRef = 495141C12D61178D00FD2041 /* SwiftUIIntrospect */; };
 		497BE7F42D57686C000F54B4 /* ComposableArchitecture in Frameworks */ = {isa = PBXBuildFile; productRef = 497BE7F32D57686C000F54B4 /* ComposableArchitecture */; };
 /* End PBXBuildFile section */
 
@@ -49,6 +50,7 @@
 				497BE7F42D57686C000F54B4 /* ComposableArchitecture in Frameworks */,
 				495141862D5FEFC500FD2041 /* SwiftSoup in Frameworks */,
 				4923EE8F2D56915100134534 /* SFSafeSymbols in Frameworks */,
+				495141C22D61178D00FD2041 /* SwiftUIIntrospect in Frameworks */,
 				495141112D5CE59200FD2041 /* WebURL in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -113,6 +115,7 @@
 				497BE7F32D57686C000F54B4 /* ComposableArchitecture */,
 				495141102D5CE59200FD2041 /* WebURL */,
 				495141852D5FEFC500FD2041 /* SwiftSoup */,
+				495141C12D61178D00FD2041 /* SwiftUIIntrospect */,
 			);
 			productName = grinta;
 			productReference = 4923EE5F2D5685E800134534 /* Grinta.app */;
@@ -148,6 +151,9 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
+				KnownAssetTags = (
+					New,
+				);
 				LastSwiftUpdateCheck = 1620;
 				LastUpgradeCheck = 1620;
 				TargetAttributes = {
@@ -176,6 +182,7 @@
 				497BE7F22D57686C000F54B4 /* XCRemoteSwiftPackageReference "swift-composable-architecture" */,
 				495140CD2D5CE41100FD2041 /* XCRemoteSwiftPackageReference "swift-url" */,
 				495141842D5FEE5500FD2041 /* XCRemoteSwiftPackageReference "SwiftSoup" */,
+				495141C02D61178D00FD2041 /* XCRemoteSwiftPackageReference "SwiftUI-Introspect" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 4923EE602D5685E800134534 /* Products */;
@@ -361,6 +368,8 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Mic allowed";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Speech allowed";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -415,6 +424,8 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Mic allowed";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Speech allowed";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -558,6 +569,14 @@
 				minimumVersion = 2.7.7;
 			};
 		};
+		495141C02D61178D00FD2041 /* XCRemoteSwiftPackageReference "SwiftUI-Introspect" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/siteline/SwiftUI-Introspect";
+			requirement = {
+				kind = exactVersion;
+				version = 1.3.0;
+			};
+		};
 		497BE7F22D57686C000F54B4 /* XCRemoteSwiftPackageReference "swift-composable-architecture" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/pointfreeco/swift-composable-architecture";
@@ -583,6 +602,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 495141842D5FEE5500FD2041 /* XCRemoteSwiftPackageReference "SwiftSoup" */;
 			productName = SwiftSoup;
+		};
+		495141C12D61178D00FD2041 /* SwiftUIIntrospect */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 495141C02D61178D00FD2041 /* XCRemoteSwiftPackageReference "SwiftUI-Introspect" */;
+			productName = SwiftUIIntrospect;
 		};
 		497BE7F32D57686C000F54B4 /* ComposableArchitecture */ = {
 			isa = XCSwiftPackageProductDependency;

@@ -64,6 +64,7 @@ final class WebsiteMetadataExtractor {
             let metadata = WebsiteMetadata(title: title, description: description, host: host, favicon: favicon)
             return .success(metadata)
         } catch {
+            print(error)
             return .failure(error)
         }
     }

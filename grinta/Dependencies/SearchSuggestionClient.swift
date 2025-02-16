@@ -47,6 +47,10 @@ struct SearchSuggestion: Equatable, Identifiable {
         var hasher = Hasher()
         hasher.combine(title)
         hasher.combine(type)
+        hasher.combine(origin)
+        hasher.combine(url)
+        hasher.combine(image)
+        hasher.combine(imageURL)
         return hasher.finalize()
     }
 
@@ -147,17 +151,19 @@ enum SuggestionComposer {
                 SearchSuggestion(title: query.term, url: query.term, image: .sparkles, imageURL: nil, type: .ai, origin: .suggested),
                 SearchSuggestion(title: query.term, url: query.term, image: .stickyNote, imageURL: nil, type: .note, origin: .suggested),
             ]
-        }
 
-        if query.isWebsiteUrl {
-            let metadata = metadata[query.term.replacingOccurrences(of: "https://", with: "").replacingOccurrences(of: "http://", with: "").replacingOccurrences(of: "www.", with: "")]
-            suggestions.append(SearchSuggestion(title: metadata?.description ?? query.term, url: query.term, image: metadata == nil ? .globe : nil, imageURL: metadata?.favicon, type: .website, origin: .suggested))
+            if query.isWebsiteUrl {
+                let metadata = metadata[query.term.replacingOccurrences(of: "https://", with: "").replacingOccurrences(of: "http://", with: "").replacingOccurrences(of: "www.", with: "")]
+                suggestions.append(SearchSuggestion(title: metadata?.description ?? query.term, url: query.term, image: metadata == nil ? .globe : nil, imageURL: metadata?.favicon, type: .website, origin: .suggested))
+            } else {
+                suggestions.append(SearchSuggestion(title: query.term, url: query.term, image: .search, imageURL: nil, type: .search, origin: .suggested))
+            }
         }
 
         let searchHistoryMatcher = SearchHistoryMatcher()
         searchHistoryMatcher.buildTrie(from: history)
 
-        let matchingHistoryItems = searchHistoryMatcher.search(query: query.term, limit: 3)
+        let matchingHistoryItems = searchHistoryMatcher.search(query: query.term, limit: 10)
         let historySuggestions = matchingHistoryItems
             .map {
                 // Clean this up...
