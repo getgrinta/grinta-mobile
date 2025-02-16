@@ -19,7 +19,6 @@ final class TrieNode {
 final class SearchHistoryMatcher {
     private let root = TrieNode()
 
-    // Build the trie using both letters and digits.
     func buildTrie(from histories: [HistoryItem]) {
         for history in histories {
             insert(history.query, item: history)
@@ -28,7 +27,6 @@ final class SearchHistoryMatcher {
 
     private func insert(_ query: String, item: HistoryItem) {
         var node = root
-        // Include letters and digits, so that extra characters (like "4") matter.
         for char in query.lowercased().filter({ $0.isLetter || $0.isNumber }) {
             if let child = node.children[char] {
                 node = child
@@ -42,9 +40,7 @@ final class SearchHistoryMatcher {
         node.historyItem = item
     }
 
-    // Search returns up to 'limit' matching HistoryItems.
     func search(query: String, limit: Int = 10) -> [HistoryItem] {
-        // Use the same filtering so that digits are preserved.
         let chars = Array(query.lowercased().filter { $0.isLetter || $0.isNumber })
         var results = [HistoryItem]()
         var seen = Set<HistoryItem>()
@@ -52,7 +48,6 @@ final class SearchHistoryMatcher {
         return results
     }
 
-    // Recursively search for matches by allowing skips.
     private func fuzzyMatchAll(node: TrieNode,
                                chars: [Character],
                                queryIndex: Int,
@@ -60,8 +55,6 @@ final class SearchHistoryMatcher {
                                limit: Int,
                                seen: inout Set<HistoryItem>)
     {
-        // If all search characters have been matched,
-        // collect all terminal (complete) history items from this subtree.
         if queryIndex == chars.count {
             collectTerminalNodes(from: node, results: &results, limit: limit, seen: &seen)
             return
@@ -69,20 +62,16 @@ final class SearchHistoryMatcher {
 
         let currentChar = chars[queryIndex]
 
-        // Try all children:
         for (key, child) in node.children {
-            // If the child's key matches the current search char, "consume" it.
             if key == currentChar {
                 fuzzyMatchAll(node: child, chars: chars, queryIndex: queryIndex + 1, results: &results, limit: limit, seen: &seen)
                 if results.count >= limit { return }
             }
-            // Also allow skipping characters in the stored query.
             fuzzyMatchAll(node: child, chars: chars, queryIndex: queryIndex, results: &results, limit: limit, seen: &seen)
             if results.count >= limit { return }
         }
     }
 
-    // DFS to collect terminal nodes from the given node.
     private func collectTerminalNodes(from node: TrieNode,
                                       results: inout [HistoryItem],
                                       limit: Int,

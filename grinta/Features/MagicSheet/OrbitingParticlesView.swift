@@ -1,5 +1,10 @@
 import SwiftUI
 
+private struct OrbitConfiguration {
+    let radius: CGFloat
+    let rotationDuration: Double
+}
+
 struct OrbitingParticle: View {
     let orbitRadius: CGFloat
     let rotationDuration: Double
@@ -10,8 +15,8 @@ struct OrbitingParticle: View {
 
     var body: some View {
         TimelineView(.animation) { timeline in
-            let elapsed = timeline.date.timeIntervalSince(startDate) * 0.6
-            let angle = (elapsed.truncatingRemainder(dividingBy: rotationDuration) / rotationDuration) * 2 * Double.pi
+            let progress = (timeline.date.timeIntervalSince(startDate) * 0.6).remainder(dividingBy: rotationDuration) / rotationDuration
+            let angle = progress * 2 * .pi
 
             Circle()
                 .fill(color)
@@ -24,25 +29,38 @@ struct OrbitingParticle: View {
 }
 
 struct OrbitingParticlesView: View {
-    @State private var colorToggle: Bool = false
+    @State private var colorToggle = false
+
+    private static let configurations = [
+        OrbitConfiguration(radius: 50, rotationDuration: 1),
+        OrbitConfiguration(radius: 80, rotationDuration: 3),
+        OrbitConfiguration(radius: 110, rotationDuration: 4),
+    ]
+
+    private var currentColor: Color {
+        colorToggle ? .fuchsia : .blue
+    }
+
     var body: some View {
         ZStack {
-            Circle()
-                .stroke((colorToggle ? Color.fuchsia : Color.blue).opacity(0.3), lineWidth: 2)
-                .frame(width: 100, height: 100)
-            Circle()
-                .stroke((colorToggle ? Color.fuchsia : Color.blue).opacity(0.3), lineWidth: 2)
-                .frame(width: 160, height: 160)
-            Circle()
-                .stroke((colorToggle ? Color.fuchsia : Color.blue).opacity(0.3), lineWidth: 2)
-                .frame(width: 220, height: 220)
-            OrbitingParticle(orbitRadius: 50, rotationDuration: 1, color: colorToggle ? Color.fuchsia : Color.blue)
-            OrbitingParticle(orbitRadius: 80, rotationDuration: 3, color: colorToggle ? Color.fuchsia : Color.blue)
-            OrbitingParticle(orbitRadius: 110, rotationDuration: 4, color: colorToggle ? Color.fuchsia : Color.blue)
+            // Orbit circles
+            ForEach(Self.configurations, id: \.radius) { config in
+                Circle()
+                    .stroke(currentColor.opacity(0.3), lineWidth: 2)
+                    .frame(width: config.radius * 2, height: config.radius * 2)
+            }
+
+            // Orbiting particles
+            ForEach(Self.configurations, id: \.radius) { config in
+                OrbitingParticle(
+                    orbitRadius: config.radius,
+                    rotationDuration: config.rotationDuration,
+                    color: currentColor
+                )
+            }
         }
         .frame(width: 300, height: 300)
         .onAppear {
-            // Trigger the color toggle animation.
             withAnimation(Animation.linear(duration: 2).repeatForever(autoreverses: true)) {
                 colorToggle.toggle()
             }

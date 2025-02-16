@@ -42,16 +42,17 @@ enum SuggestionOrigin {
     case history
 }
 
-struct SearchSuggestion: Equatable, Identifiable {
+struct SearchSuggestion: Equatable, Identifiable, Hashable {
     var id: Int {
         var hasher = Hasher()
         hasher.combine(title)
         hasher.combine(type)
-        hasher.combine(origin)
         hasher.combine(url)
-        hasher.combine(image)
-        hasher.combine(imageURL)
         return hasher.finalize()
+    }
+
+    var hashValue: Int {
+        id
     }
 
     let title: String

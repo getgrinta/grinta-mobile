@@ -10,7 +10,7 @@ struct RequestBuilder {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
         let input = ChatInput(
-            model: "gpt-4o",
+            model: "",
             store: false,
             stream: true,
             messages: [.init(role: "user", content: message)]

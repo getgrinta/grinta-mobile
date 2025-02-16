@@ -15,11 +15,7 @@ enum WebsiteMetadataExtractorError: Error {
 
 @MainActor
 final class WebsiteMetadataExtractor {
-    /// Extracts website metadata (title, description, and favicon) from the head of the document.
-    /// - Parameter webView: A WKWebView instance that has loaded a webpage.
-    /// - Returns: A Result containing a WebsiteMetadata struct, or an error.
     func extractMetadata(from webView: WKWebView) async -> Result<WebsiteMetadata, Error> {
-        // JavaScript to extract the title, description, and favicon.
         let js = """
         (() => {
             const title = document.title || "";
@@ -48,18 +44,36 @@ final class WebsiteMetadataExtractor {
         }
     }
 
-    /// Extracts website metadata (title, description, favicon, and host) from an HTML string using SwiftSoup.
-    /// - Parameter html: A string containing the HTML source of a webpage.
-    /// - Returns: A Result containing a WebsiteMetadata struct, or an error.
     func extractMetadata(fromHTML html: String, host: String) -> Result<WebsiteMetadata, Error> {
         do {
             let document = try SwiftSoup.parse(html)
             let title = try document.title()
-            let descriptionElement = try document.select("meta[name=description]").first()
-            let description = try descriptionElement?.attr("content") ?? ""
 
-            let faviconElement = try document.select("head link[rel*='icon']").first()
-            let favicon = try faviconElement?.attr("href") ?? ""
+            // Try different meta description tags in head
+            let description = try document.select("head > meta[name=description], head > meta[property=og:description]").first()?.attr("content") ?? ""
+
+            // Look for favicon in head with different rel attributes
+            let faviconSelectors = [
+                "head > link[rel='icon']",
+                "head > link[rel='shortcut icon']",
+                "head > link[rel='apple-touch-icon']",
+                "head > link[rel='apple-touch-icon-precomposed']",
+                "head > link[rel*='icon']",
+                "head > link[type='image/x-icon']",
+            ]
+
+            let favicon = try faviconSelectors.lazy
+                .compactMap { try document.select($0).first()?.attr("href") }
+                .first
+                .map { href -> String in
+                    if href.hasPrefix("http") {
+                        return href
+                    } else if href.hasPrefix("//") {
+                        return "https:" + href
+                    } else {
+                        return "https://" + host.trimmingCharacters(in: .init(charactersIn: "/")) + "/" + href.trimmingCharacters(in: .init(charactersIn: "/"))
+                    }
+                } ?? ""
 
             let metadata = WebsiteMetadata(title: title, description: description, host: host, favicon: favicon)
             return .success(metadata)

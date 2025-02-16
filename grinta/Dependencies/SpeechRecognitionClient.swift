@@ -10,7 +10,7 @@ final class SpeechRecognitionService: @unchecked Sendable {
     var recognitionTasks: [SFSpeechRecognitionTask] = []
     var speechRecognizers: [SFSpeechRecognizer] = []
     private var languageRecognizers: [Locale: NLLanguageRecognizer] = [:]
-    private var operationQueue = DispatchQueue(label: "com.grinta.speechrecognitionclientimpl")
+    private let operationQueue = DispatchQueue(label: "com.grinta.speechrecognition")
 
     init() {
         setupRecognizers()
@@ -29,12 +29,9 @@ final class SpeechRecognitionService: @unchecked Sendable {
             let languageRecognizer = NLLanguageRecognizer()
             if let languageCode = recognizer.locale.language.languageCode?.identifier {
                 languageRecognizer.languageConstraints = [NLLanguage(languageCode)]
-                languageRecognizer.languageHints = [NLLanguage(languageCode): 1.0]
             }
             languageRecognizers[recognizer.locale] = languageRecognizer
         }
-
-        print("Initialized speech recognizers for locales: \(speechRecognizers.map(\.locale.identifier))")
     }
 
     func requestAuthorization() async throws {
@@ -78,46 +75,39 @@ final class SpeechRecognitionService: @unchecked Sendable {
             Task {
                 do {
                     try await withThrowingTaskGroup(of: Void.self) { group in
-                        // Check if should stop recording
-                        group.addTask {
-                            while await speechTimer.shouldStopRecording() {
-                                try Task.checkCancellation()
-                                try await Task.sleep(for: .milliseconds(50))
-
-                                self.recognitionTasks.forEach { $0.cancel() }
-                                continuation.finish()
-                            }
-                        }
-
                         // Add a task for each supported locale
                         for (index, recognizer) in speechRecognizers.enumerated() {
                             let request = self.recognitionRequests[index]
                             let recognitionResults = AsyncStream<RecognitionResult> { continuation in
 
-                                let task = recognizer.recognitionTask(with: request) { result, _ in
-                                    if let result {
-                                        let languageRecognizer = self.languageRecognizers[recognizer.locale]
-                                        // Although we could have gotten a result from the recognizer
-                                        // it doesn't mean it's good quality in the target language.
-                                        // Use NLP to get a confidence of that language.
-                                        languageRecognizer?.reset()
-                                        languageRecognizer?.processString(result.bestTranscription.formattedString)
-                                        let languageHypothesis = languageRecognizer?.languageHypotheses(withMaximum: 1).first
+                                let task = recognizer.recognitionTask(with: request) { [weak self] result, _ in
+                                    guard let self, let result else { return }
 
-                                        let currentResult = RecognitionResult(
-                                            text: result.bestTranscription.formattedString,
-                                            confidence: Float(languageHypothesis?.value ?? 0),
-                                            locale: recognizer.locale
-                                        )
-                                        continuation.yield(currentResult)
-                                    }
+                                    let languageRecognizer = languageRecognizers[recognizer.locale]
+                                    // Although we could have gotten a result from the recognizer
+                                    // it doesn't mean it's good quality in the target language.
+                                    // Use NLP to get a confidence of that language.
+                                    languageRecognizer?.reset()
+                                    languageRecognizer?.processString(result.bestTranscription.formattedString)
+                                    let languageHypothesis = languageRecognizer?.languageHypotheses(withMaximum: 1).first
+
+                                    let currentResult = RecognitionResult(
+                                        text: result.bestTranscription.formattedString,
+                                        confidence: Float(languageHypothesis?.value ?? 0),
+                                        locale: recognizer.locale
+                                    )
+                                    continuation.yield(currentResult)
 
                                     if Task.isCancelled {
-                                        self.recognitionTasks.forEach { $0.cancel() }
+                                        recognitionTasks.forEach { $0.cancel() }
                                         continuation.finish()
                                     }
                                 }
                                 self.recognitionTasks.append(task)
+
+                                continuation.onTermination = { _ in
+                                    task.cancel()
+                                }
                             }
 
                             group.addTask { [locale = recognizer.locale] in
@@ -134,17 +124,13 @@ final class SpeechRecognitionService: @unchecked Sendable {
                         group.addTask {
                             while await speechTimer.shouldStopRecording() == false, Task.isCancelled == false {
                                 try Task.checkCancellation()
-                                try await Task.sleep(for: .milliseconds(100))
+                                try await Task.sleep(for: .milliseconds(50))
 
-                                // Pick the result with the highest confidence of being a query
-                                // in a given language.
-                                if let bestResult = await localeResults.highestConfidenceResult() {
-                                    let currentText = await speechTimer.lastEmittedText
-
-                                    if bestResult.text != currentText {
-                                        await speechTimer.updateLastEmittedText(bestResult.text, at: Date())
-                                        continuation.yield(bestResult.text)
-                                    }
+                                if let bestResult = await localeResults.highestConfidenceResult(),
+                                   await bestResult.text != speechTimer.lastEmittedText
+                                {
+                                    await speechTimer.updateLastEmittedText(bestResult.text, at: Date())
+                                    continuation.yield(bestResult.text)
                                 }
                             }
 
@@ -199,6 +185,10 @@ final class SpeechRecognitionService: @unchecked Sendable {
     }
 
     private func initializeAudioSession() throws {
+        guard !speechRecognizers.isEmpty else {
+            throw SpeechRecognitionClientError.noSupportedLocales
+        }
+
         let audioSession = AVAudioSession.sharedInstance()
         do {
             try audioSession.setCategory(.record, mode: .measurement, options: .duckOthers)
@@ -242,6 +232,8 @@ private actor LocaleResults {
 }
 
 private actor SpeechTimer {
+    private let initialSilenceThreshold: TimeInterval = 3.0
+    private let postSpeechSilenceThreshold: TimeInterval = 1.5
     private var lastSpeechTime = Date()
     private(set) var lastEmittedText = ""
 
@@ -252,8 +244,8 @@ private actor SpeechTimer {
 
     func shouldStopRecording() -> Bool {
         let quietDuration = Date().timeIntervalSince(lastSpeechTime)
-        let didInitialTimePass = lastEmittedText.isEmpty && quietDuration >= 3
-        let didPostSpeechTimePass = !lastEmittedText.isEmpty && quietDuration >= 1.5
+        let didInitialTimePass = lastEmittedText.isEmpty && quietDuration >= initialSilenceThreshold
+        let didPostSpeechTimePass = !lastEmittedText.isEmpty && quietDuration >= postSpeechSilenceThreshold
         return didInitialTimePass || didPostSpeechTimePass
     }
 }
