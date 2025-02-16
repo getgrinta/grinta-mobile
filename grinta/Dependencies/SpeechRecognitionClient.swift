@@ -4,37 +4,35 @@ import Foundation
 import NaturalLanguage
 @preconcurrency import Speech
 
-enum SpeechRecognitionClientError: Error {
-    case speechRecognizerUnavailable
-    case audioEngineError(String)
-    case noSupportedLocales
-}
-
-private struct RecognitionResult: Comparable {
-    let text: String
-    let confidence: Float
-    let locale: Locale
-
-    static func < (lhs: RecognitionResult, rhs: RecognitionResult) -> Bool {
-        lhs.confidence < rhs.confidence
-    }
-}
-
 final class SpeechRecognitionService: @unchecked Sendable {
     let audioEngine = AVAudioEngine()
     var recognitionRequests: [SFSpeechAudioBufferRecognitionRequest] = []
     var recognitionTasks: [SFSpeechRecognitionTask] = []
     var speechRecognizers: [SFSpeechRecognizer] = []
+    private var languageRecognizers: [Locale: NLLanguageRecognizer] = [:]
     private var operationQueue = DispatchQueue(label: "com.grinta.speechrecognitionclientimpl")
 
     init() {
-        // Get supported locales that match user preferences
+        setupRecognizers()
+    }
+
+    private func setupRecognizers() {
         let supportedLocales = SFSpeechRecognizer.supportedLocales()
         let preferredLanguageIDs = Set(Locale.preferredLanguages)
 
         speechRecognizers = supportedLocales
             .filter { preferredLanguageIDs.contains($0.identifier) }
             .compactMap { SFSpeechRecognizer(locale: $0) }
+
+        // Pre-configure language recognizers for each supported locale
+        for recognizer in speechRecognizers {
+            let languageRecognizer = NLLanguageRecognizer()
+            if let languageCode = recognizer.locale.language.languageCode?.identifier {
+                languageRecognizer.languageConstraints = [NLLanguage(languageCode)]
+                languageRecognizer.languageHints = [NLLanguage(languageCode): 1.0]
+            }
+            languageRecognizers[recognizer.locale] = languageRecognizer
+        }
 
         print("Initialized speech recognizers for locales: \(speechRecognizers.map(\.locale.identifier))")
     }
@@ -59,17 +57,10 @@ final class SpeechRecognitionService: @unchecked Sendable {
     }
 
     func startRecording() async throws -> AsyncStream<String> {
-        // Cancel any existing tasks
         recognitionTasks.forEach { $0.cancel() }
         recognitionTasks = []
 
-        let audioSession = AVAudioSession.sharedInstance()
-        do {
-            try audioSession.setCategory(.record, mode: .measurement, options: .duckOthers)
-            try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
-        } catch {
-            throw SpeechRecognitionClientError.audioEngineError(error.localizedDescription)
-        }
+        try initializeAudioSession()
 
         recognitionRequests = (0 ..< speechRecognizers.count).map { _ in
             let request = SFSpeechAudioBufferRecognitionRequest()
@@ -91,7 +82,7 @@ final class SpeechRecognitionService: @unchecked Sendable {
                         group.addTask {
                             while await speechTimer.shouldStopRecording() {
                                 try Task.checkCancellation()
-                                try await Task.sleep(for: .milliseconds(100))
+                                try await Task.sleep(for: .milliseconds(50))
 
                                 self.recognitionTasks.forEach { $0.cancel() }
                                 continuation.finish()
@@ -103,21 +94,15 @@ final class SpeechRecognitionService: @unchecked Sendable {
                             let request = self.recognitionRequests[index]
                             let recognitionResults = AsyncStream<RecognitionResult> { continuation in
 
-                                let languageRecognizer = NLLanguageRecognizer()
-                                // Although we could have gotten a result from the recognizer
-                                // it doesn't mean it's good quality in the target language.
-                                // Use NLP to get a confidence of that language.
-
-                                // Limit the languages to the target language only
-                                if let languageCode = recognizer.locale.language.languageCode {
-                                    languageRecognizer.languageConstraints = [NLLanguage(languageCode.identifier)]
-                                }
-
                                 let task = recognizer.recognitionTask(with: request) { result, _ in
                                     if let result {
-                                        languageRecognizer.reset()
-                                        languageRecognizer.processString(result.bestTranscription.formattedString)
-                                        let languageHypothesis = languageRecognizer.languageHypotheses(withMaximum: 1).first
+                                        let languageRecognizer = self.languageRecognizers[recognizer.locale]
+                                        // Although we could have gotten a result from the recognizer
+                                        // it doesn't mean it's good quality in the target language.
+                                        // Use NLP to get a confidence of that language.
+                                        languageRecognizer?.reset()
+                                        languageRecognizer?.processString(result.bestTranscription.formattedString)
+                                        let languageHypothesis = languageRecognizer?.languageHypotheses(withMaximum: 1).first
 
                                         let currentResult = RecognitionResult(
                                             text: result.bestTranscription.formattedString,
@@ -212,24 +197,32 @@ final class SpeechRecognitionService: @unchecked Sendable {
             }
         }
     }
+
+    private func initializeAudioSession() throws {
+        let audioSession = AVAudioSession.sharedInstance()
+        do {
+            try audioSession.setCategory(.record, mode: .measurement, options: .duckOthers)
+            try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
+        } catch {
+            throw SpeechRecognitionClientError.audioEngineError(error.localizedDescription)
+        }
+    }
 }
 
-@DependencyClient
-struct SpeechRecognitionClient {
-    var requestAuthorization: @Sendable () async throws -> Void
-    var startRecording: @Sendable () async throws -> AsyncStream<String>
-    var stopRecording: @Sendable () -> Void
+enum SpeechRecognitionClientError: Error {
+    case speechRecognizerUnavailable
+    case audioEngineError(String)
+    case noSupportedLocales
 }
 
-extension SpeechRecognitionClient: DependencyKey {
-    static let liveValue: Self = {
-        let service = SpeechRecognitionService()
-        return Self(
-            requestAuthorization: { try await service.requestAuthorization() },
-            startRecording: { try await service.startRecording() },
-            stopRecording: { service.stopRecording() }
-        )
-    }()
+private struct RecognitionResult: Comparable {
+    let text: String
+    let confidence: Float
+    let locale: Locale
+
+    static func < (lhs: RecognitionResult, rhs: RecognitionResult) -> Bool {
+        lhs.confidence < rhs.confidence
+    }
 }
 
 private actor LocaleResults {
@@ -263,4 +256,22 @@ private actor SpeechTimer {
         let didPostSpeechTimePass = !lastEmittedText.isEmpty && quietDuration >= 1.5
         return didInitialTimePass || didPostSpeechTimePass
     }
+}
+
+@DependencyClient
+struct SpeechRecognitionClient {
+    var requestAuthorization: @Sendable () async throws -> Void
+    var startRecording: @Sendable () async throws -> AsyncStream<String>
+    var stopRecording: @Sendable () -> Void
+}
+
+extension SpeechRecognitionClient: DependencyKey {
+    static let liveValue: Self = {
+        let service = SpeechRecognitionService()
+        return Self(
+            requestAuthorization: { try await service.requestAuthorization() },
+            startRecording: { try await service.startRecording() },
+            stopRecording: { service.stopRecording() }
+        )
+    }()
 }
