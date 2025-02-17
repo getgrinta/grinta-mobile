@@ -1,25 +1,35 @@
 import SwiftUI
 import UIKit
 
+/// A UITextField wrapper that supports auto-selection and custom keyboard behaviors
 struct AutoSelectTextField: UIViewRepresentable {
-    var placeholder: String
+    // MARK: - Properties
+
+    let placeholder: String
     @Binding var text: String
+
+    // MARK: - Configuration
+
+    private var autoSelectTrigger: AnyHashable?
+    private var keyboardType: UIKeyboardType = .default
+    private var returnKeyType: UIReturnKeyType = .default
+    private var autocorrectionType: UITextAutocorrectionType = .default
+    private var autocapitalizationType: UITextAutocapitalizationType = .sentences
+    private var enablesReturnKeyAutomatically: Bool = false
+    private var focusedField: Binding<AnyHashable?>?
+    private var focusedValue: AnyHashable?
+
+    // MARK: - Callbacks
+
+    private var onSubmit: (() -> Void)?
+    private var onKeyPress: ((UIKey?) -> KeyPressResult)?
 
     init(_ placeholder: String, text: Binding<String>) {
         self.placeholder = placeholder
         _text = text
     }
 
-    private var autoSelectTrigger: AnyHashable? = nil
-
-    private var keyboardType: UIKeyboardType = .default
-    private var returnKeyType: UIReturnKeyType = .default
-    private var autocorrectionType: UITextAutocorrectionType = .default
-    private var autocapitalizationType: UITextAutocapitalizationType = .sentences
-    private var enablesReturnKeyAutomatically: Bool = false
-
-    private var onSubmit: (() -> Void)? = nil
-    private var onKeyPress: ((UIKey?) -> KeyPressResult)? = nil
+    // MARK: - UIViewRepresentable
 
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
@@ -36,131 +46,193 @@ struct AutoSelectTextField: UIViewRepresentable {
             for: .editingChanged
         )
 
-        textField.onKeyPress = onKeyPress
-
-        textField.keyboardType = keyboardType
-        textField.returnKeyType = returnKeyType
-        textField.autocorrectionType = autocorrectionType
-        textField.autocapitalizationType = autocapitalizationType
-        textField.enablesReturnKeyAutomatically = enablesReturnKeyAutomatically
-
+        configureTextField(textField)
         return textField
     }
 
     func updateUIView(_ uiView: CustomizableTextField, context: Context) {
-        if uiView.text != text {
-            uiView.text = text
-        }
-
-        // Auto-select on trigger change
-        if autoSelectTrigger != context.coordinator.lastAutoSelectTrigger {
-            context.coordinator.lastAutoSelectTrigger = autoSelectTrigger
-            DispatchQueue.main.async {
-                uiView.selectAll(nil)
-            }
-        }
+        updateTextIfNeeded(uiView)
+        updateCallbacks(uiView)
+        updateFocusState(uiView)
+        handleAutoSelection(uiView, context: context)
+        configureTextField(uiView)
+        context.coordinator.onSubmit = onSubmit
     }
 
     func sizeThatFits(_ proposal: ProposedViewSize, uiView _: CustomizableTextField, context _: Context) -> CGSize? {
         CGSize(width: proposal.width ?? 0, height: 24)
     }
 
-    final class Coordinator: NSObject, UITextFieldDelegate {
-        var parent: AutoSelectTextField
-        var lastAutoSelectTrigger: AnyHashable?
+    // MARK: - Private Helpers
 
-        init(_ parent: AutoSelectTextField) {
-            self.parent = parent
-            lastAutoSelectTrigger = parent.autoSelectTrigger
+    private func configureTextField(_ textField: CustomizableTextField) {
+        textField.onKeyPress = onKeyPress
+        textField.onSubmit = onSubmit
+        textField.keyboardType = keyboardType
+        textField.returnKeyType = returnKeyType
+        textField.autocorrectionType = autocorrectionType
+        textField.autocapitalizationType = autocapitalizationType
+        textField.enablesReturnKeyAutomatically = enablesReturnKeyAutomatically
+    }
+
+    private func updateTextIfNeeded(_ textField: CustomizableTextField) {
+        if textField.text != text {
+            textField.text = text
         }
+    }
 
-        @objc func textChanged(_ sender: UITextField) {
-            parent.text = sender.text ?? ""
+    private func updateCallbacks(_ textField: CustomizableTextField) {
+        textField.onKeyPress = onKeyPress
+        textField.onSubmit = onSubmit
+    }
+
+    private func updateFocusState(_ textField: CustomizableTextField) {
+        guard let focusedField,
+              let focusedValue else { return }
+
+        let isFocused = focusedField.wrappedValue == focusedValue
+        if isFocused, !textField.isFirstResponder {
+            textField.becomeFirstResponder()
+        } else if !isFocused, textField.isFirstResponder {
+            _ = textField.resignFirstResponder()
         }
+    }
 
-        func textFieldShouldReturn(_: UITextField) -> Bool {
-            parent.onSubmit?()
-            return true
+    private func handleAutoSelection(_ textField: CustomizableTextField, context: Context) {
+        if autoSelectTrigger != context.coordinator.lastAutoSelectTrigger {
+            context.coordinator.lastAutoSelectTrigger = autoSelectTrigger
+            textField.selectAll(nil)
         }
-
-        func textFieldDidBeginEditing(_: UITextField) {}
     }
 }
 
+// MARK: - Modifiers
+
 extension AutoSelectTextField {
-    func placeholder(_ placeholder: String) -> AutoSelectTextField {
+    func submitLabel(_ label: SubmitLabel) -> Self {
         var copy = self
-        copy.placeholder = placeholder
+        copy.returnKeyType = label.returnKeyType
+        copy.enablesReturnKeyAutomatically = true
         return copy
     }
 
-    func keyboardType(_ type: UIKeyboardType) -> AutoSelectTextField {
+    func keyboardType(_ type: UIKeyboardType) -> Self {
         var copy = self
         copy.keyboardType = type
         return copy
     }
 
-    func returnKeyType(_ type: UIReturnKeyType) -> AutoSelectTextField {
+    func autocorrectionDisabled() -> Self {
         var copy = self
-        copy.returnKeyType = type
+        copy.autocorrectionType = .no
         return copy
     }
 
-    func autocorrectionDisabled(_ disabled: Bool) -> AutoSelectTextField {
+    func focused<T: Hashable>(_ binding: FocusState<T>.Binding, equals value: T) -> Self {
         var copy = self
-        copy.autocorrectionType = disabled ? .no : .yes
+        copy.focusedField = Binding(
+            get: { binding.wrappedValue == value ? AnyHashable(value) : nil },
+            set: { _ in binding.wrappedValue = value }
+        )
         return copy
     }
 
-    func textInputAutocapitalization(_ type: UITextAutocapitalizationType) -> AutoSelectTextField {
+    func textInputAutocapitalization(_ style: TextInputAutocapitalization) -> Self {
         var copy = self
-        copy.autocapitalizationType = type
+        copy.autocapitalizationType = style == .never ? .none : .sentences
         return copy
     }
 
-    /// Sets whether the return key is enabled automatically.
-    func enablesReturnKeyAutomatically(_ enabled: Bool) -> AutoSelectTextField {
-        var copy = self
-        copy.enablesReturnKeyAutomatically = enabled
-        return copy
-    }
-
-    /// Sets the onSubmit callback.
-    func onSubmit(_ action: @escaping () -> Void) -> AutoSelectTextField {
-        var copy = self
-        copy.onSubmit = action
-        return copy
-    }
-
-    /// Sets the onKeyPress callback.
-    func onKeyPress(_ action: @escaping (UIKey?) -> KeyPressResult) -> AutoSelectTextField {
+    func onKeyPress(_ action: @escaping (UIKey?) -> KeyPressResult) -> Self {
         var copy = self
         copy.onKeyPress = action
         return copy
     }
 
-    /// Sets the auto‑select trigger.
-    func autoselect(value: some Hashable) -> AutoSelectTextField {
+    func onSubmit(_ action: @escaping () -> Void) -> Self {
         var copy = self
-        copy.autoSelectTrigger = AnyHashable(value)
+        copy.onSubmit = action
+        return copy
+    }
+
+    func autoselect(value: AnyHashable) -> Self {
+        var copy = self
+        copy.autoSelectTrigger = value
         return copy
     }
 }
+
+// MARK: - Supporting Types
 
 enum KeyPressResult {
     case ignored
     case handled
 }
 
+enum SubmitLabel {
+    case go
+    case `default`
+
+    var returnKeyType: UIReturnKeyType {
+        switch self {
+        case .go:
+            .go
+        case .default:
+            .default
+        }
+    }
+}
+
+enum TextInputAutocapitalization {
+    case never
+    case sentences
+}
+
+// MARK: - CustomizableTextField
+
 final class CustomizableTextField: UITextField {
-    /// A closure called for key press events.
     var onKeyPress: ((UIKey?) -> KeyPressResult)?
+    var onSubmit: (() -> Void)?
 
     override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
-        if let key = presses.first?.key, let result = onKeyPress?(key), result == .handled {
-            // If handled, do not propagate further.
+        guard let key = presses.first?.key else {
+            super.pressesBegan(presses, with: event)
             return
         }
-        super.pressesBegan(presses, with: event)
+
+        if let result = onKeyPress?(key) {
+            switch result {
+            case .ignored:
+                super.pressesBegan(presses, with: event)
+            case .handled:
+                break
+            }
+        } else {
+            super.pressesBegan(presses, with: event)
+        }
+    }
+}
+
+// MARK: - Coordinator
+
+extension AutoSelectTextField {
+    class Coordinator: NSObject, UITextFieldDelegate {
+        private var textField: AutoSelectTextField
+        var lastAutoSelectTrigger: AnyHashable?
+        var onSubmit: (() -> Void)?
+
+        init(_ textField: AutoSelectTextField) {
+            self.textField = textField
+        }
+
+        @objc func textChanged(_ textField: UITextField) {
+            self.textField.text = textField.text ?? ""
+        }
+
+        func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+            onSubmit?()
+            textField.resignFirstResponder()
+            return true
+        }
     }
 }

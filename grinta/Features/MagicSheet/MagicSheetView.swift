@@ -77,7 +77,6 @@ struct MagicSheetView: View {
                             L10n.search,
                             text: $store.searchText.sending(\.searchTextChanged).animation(.easeInOut)
                         )
-                        .keyboardType(.webSearch)
                         .autoselect(value: someVal)
                         .submitLabel(.go)
                         .autocorrectionDisabled()
@@ -90,6 +89,7 @@ struct MagicSheetView: View {
                         .onSubmit {
                             store.send(.submitSearch)
                         }
+                        .keyboardType(.webSearch)
                         .foregroundStyle(.neutral600)
                         .font(.title3)
 
