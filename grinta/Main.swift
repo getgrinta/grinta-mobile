@@ -40,7 +40,7 @@ struct Main {
 
             case let .websiteMetadataFetched(metadata):
                 return .run { _ in
-                    try await websiteMetadataClient.store(item: metadata, hostname: metadata.host.replacingOccurrences(of: "https://", with: "").replacingOccurrences(of: "http://", with: "").replacingOccurrences(of: "www.", with: ""))
+                    try await websiteMetadataClient.store(item: metadata, hostname: SearchQuery(metadata.host).canonicalHost)
                 }
             }
         }

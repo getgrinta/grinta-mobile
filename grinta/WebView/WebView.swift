@@ -53,8 +53,6 @@ struct WebView: UIViewRepresentable {
             forMainFrameOnly: true
         )
 
-        print("Adding user scripts yo")
-
         configuration.userContentController.addUserScript(sourceScript)
         configuration.userContentController.add(context.coordinator, name: UserHandler.source.rawValue)
 

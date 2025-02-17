@@ -1,12 +1,12 @@
 import Foundation
 
-struct HistoryItem: Hashable {
-    enum ItemType {
+struct HistoryItem: Hashable, Codable {
+    enum ItemType: Codable {
         case website
         case search
     }
 
-    let query: String
+    let query: SearchQuery
     let type: ItemType
 }
 
@@ -21,7 +21,7 @@ final class SearchHistoryMatcher {
 
     func buildTrie(from histories: [HistoryItem]) {
         for history in histories {
-            insert(history.query, item: history)
+            insert(history.query.raw, item: history)
         }
     }
 

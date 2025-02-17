@@ -43,24 +43,23 @@ enum SuggestionOrigin {
 }
 
 struct SearchSuggestion: Equatable, Identifiable, Hashable {
-    var id: Int {
-        var hasher = Hasher()
-        hasher.combine(title)
-        hasher.combine(type)
-        hasher.combine(url)
-        return hasher.finalize()
-    }
-
-    var hashValue: Int {
-        id
-    }
-
     let title: String
     let url: String
     let image: ImageResource?
     let imageURL: String?
     let type: SuggestionType
     let origin: SuggestionOrigin
+
+    var id: Int {
+        var hasher = Hasher()
+        hasher.combine(type)
+        hasher.combine(url)
+        return hasher.finalize()
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
 }
 
 @DependencyClient
@@ -86,10 +85,10 @@ extension SearchSuggestionClient: DependencyKey {
                 let historyItems = await (try? historyArchive.retrieve()) ?? []
                 var metadata: [String: WebsiteMetadata] = [:]
 
-                for historyItem in historyItems where SearchQuery(historyItem.query).isWebsiteUrl {
-                    guard let metadataItem = await (try? websiteMetadataClient.retrieve(hostname: historyItem.query)) else { continue }
+                for historyItem in historyItems where historyItem.query.isWebsiteUrl {
+                    guard let metadataItem = await (try? websiteMetadataClient.retrieve(hostname: historyItem.query.raw)) else { continue }
 
-                    metadata[historyItem.query.replacingOccurrences(of: "https://", with: "").replacingOccurrences(of: "http://", with: "").replacingOccurrences(of: "www.", with: "")] = metadataItem
+                    metadata[historyItem.query.canonicalHost] = metadataItem
                 }
 
                 return AsyncStream([SearchSuggestion].self) { continuation in
@@ -101,7 +100,7 @@ extension SearchSuggestionClient: DependencyKey {
                     }
 
                     let task = Task<Void, Never> { [metadata] in
-                        if let cachedSuggestions = remoteSuggestionCache.retrieve(query: query.term) {
+                        if let cachedSuggestions = remoteSuggestionCache.retrieve(query: query.raw) {
                             continuation.yield(SuggestionComposer.compose(history: historyItems, remote: cachedSuggestions, query: query, metadata: metadata))
                             continuation.finish()
                             return
@@ -117,12 +116,12 @@ extension SearchSuggestionClient: DependencyKey {
                         let searchResults = await (try? startPageClient.fetchSuggestions(query)) ?? []
 
                         let searchSuggestions = searchResults
-                            .filter { $0.lowercased() != query.term.lowercased() }
+                            .filter { $0.lowercased() != query.raw.lowercased() }
                             .map {
-                                SearchSuggestion(title: $0, url: query.term, image: .search, imageURL: nil, type: .search, origin: .suggested)
+                                SearchSuggestion(title: $0, url: query.raw, image: .search, imageURL: nil, type: .search, origin: .suggested)
                             }
 
-                        remoteSuggestionCache.store(query: query.term, suggestions: searchSuggestions)
+                        remoteSuggestionCache.store(query: query.raw, suggestions: searchSuggestions)
 
                         continuation.yield(SuggestionComposer.compose(history: historyItems, remote: searchSuggestions, query: query, metadata: metadata))
 
@@ -149,33 +148,33 @@ enum SuggestionComposer {
 
         if query.isEmpty == false {
             suggestions = [
-                SearchSuggestion(title: query.term, url: query.term, image: .sparkles, imageURL: nil, type: .ai, origin: .suggested),
-                SearchSuggestion(title: query.term, url: query.term, image: .stickyNote, imageURL: nil, type: .note, origin: .suggested),
+                SearchSuggestion(title: query.raw, url: query.raw, image: .sparkles, imageURL: nil, type: .ai, origin: .suggested),
+                SearchSuggestion(title: query.raw, url: query.raw, image: .stickyNote, imageURL: nil, type: .note, origin: .suggested),
             ]
 
             if query.isWebsiteUrl {
-                let metadata = metadata[query.term.replacingOccurrences(of: "https://", with: "").replacingOccurrences(of: "http://", with: "").replacingOccurrences(of: "www.", with: "")]
-                suggestions.append(SearchSuggestion(title: metadata?.description ?? query.term, url: query.term, image: metadata == nil ? .globe : nil, imageURL: metadata?.favicon, type: .website, origin: .suggested))
+                let metadata = metadata[query.canonicalHost]
+                suggestions.append(SearchSuggestion(title: metadata?.description ?? query.raw, url: query.raw, image: metadata == nil ? .globe : nil, imageURL: metadata?.favicon, type: .website, origin: .suggested))
             } else {
-                suggestions.append(SearchSuggestion(title: query.term, url: query.term, image: .search, imageURL: nil, type: .search, origin: .suggested))
+                suggestions.append(SearchSuggestion(title: query.raw, url: query.raw, image: .search, imageURL: nil, type: .search, origin: .suggested))
             }
         }
 
         let searchHistoryMatcher = SearchHistoryMatcher()
         searchHistoryMatcher.buildTrie(from: history)
 
-        let matchingHistoryItems = searchHistoryMatcher.search(query: query.term, limit: 10)
+        let matchingHistoryItems = searchHistoryMatcher.search(query: query.raw, limit: 10)
         let historySuggestions = matchingHistoryItems
             .map {
                 // Clean this up...
-                let metadataItem = metadata[$0.query.replacingOccurrences(of: "https://", with: "").replacingOccurrences(of: "http://", with: "").replacingOccurrences(of: "www.", with: "")]
+                let metadataItem = metadata[$0.query.canonicalHost]
 
                 return SearchSuggestion(
-                    title: metadataItem?.title ?? $0.query,
-                    url: $0.query,
+                    title: metadataItem?.title ?? $0.query.raw,
+                    url: $0.query.raw,
                     image: .search,
                     imageURL: metadataItem?.favicon,
-                    type: SearchQuery($0.query).isWebsiteUrl ? .website : .search,
+                    type: $0.query.isWebsiteUrl ? .website : .search,
                     origin: .history
                 )
             }

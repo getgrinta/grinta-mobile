@@ -2,25 +2,6 @@ import ComposableArchitecture
 import SwiftUI
 import SwiftUIIntrospect
 
-struct VisualEffectBlur: UIViewRepresentable {
-    let style: UIBlurEffect.Style
-
-    func makeUIView(context _: Context) -> UIVisualEffectView {
-        UIVisualEffectView(effect: UIBlurEffect(style: style))
-    }
-
-    func updateUIView(_: UIVisualEffectView, context _: Context) {}
-}
-
-extension Color {
-    static let vibrantBlue = Color(red: 0.4157, green: 0.5098, blue: 0.9843) // #6A82FB [1]
-    static let navyBlue = Color(red: 0.0, green: 0.0, blue: 0.5019) // #000080
-    static let kashmirBlue = Color(red: 0.3137, green: 0.4275, blue: 0.6039) // #506D9B
-    static let biscay = Color(red: 0.1176, green: 0.2275, blue: 0.4627) // #1E3A76
-    static let fuchsia = Color(red: 1.0, green: 0.0, blue: 1.0) // #FF00FF
-    static let azalea = Color(red: 0.9451, green: 0.6941, blue: 0.7804) // #F1B1C7
-}
-
 struct MagicSheetView: View {
     @Environment(\.colorScheme) private var colorScheme
     @Bindable var store: StoreOf<MagicSheet>
@@ -62,6 +43,9 @@ struct MagicSheetView: View {
         .presentationDragIndicator(store.mode == .full ? .visible : .hidden)
         .presentationCornerRadius(cornerRadius)
         .presentationBackgroundInteraction(.enabled)
+        .onAppear {
+            store.send(.onAppear)
+        }
     }
 
     private func MiniView() -> some View {
@@ -76,11 +60,6 @@ struct MagicSheetView: View {
             .padding(.top, 12)
         }
     }
-
-    @State private var startPoint = UnitPoint(x: -1, y: 0.5)
-    @State private var endPoint = UnitPoint(x: 1, y: 0.5)
-
-    @State private var gradientPosition: CGFloat = -1.0
 
     @ViewBuilder
     private func FullView() -> some View {
@@ -177,6 +156,7 @@ struct MagicSheetView: View {
                 OrbitingParticlesView()
                     .opacity(store.isRecognizingVoice ? 1 : 0)
                     .animation(.easeInOut(duration: 0.3), value: store.isRecognizingVoice)
+
                 List {
                     ForEach(store.searchSuggestions) { suggestion in
                         Button {
@@ -195,61 +175,6 @@ struct MagicSheetView: View {
             }
         }
     }
-
-    private func ListEntryView(suggestion: SearchSuggestion, searchText: String) -> some View {
-        HStack(spacing: 12) {
-            if let imageURL = suggestion.imageURL.flatMap({ URL(string: $0) }) {
-                AsyncImage(url: imageURL, content: { image in
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .layoutPriority(0)
-                        .frame(width: 28)
-
-                }, placeholder: {
-                    Image(suggestion.image ?? .globe)
-                })
-            } else {
-                Image(suggestion.origin == .history ? ImageResource.history : (suggestion.image ?? ImageResource.globe))
-                    .resizable()
-                    .foregroundStyle(.neutral400)
-                    .tint(Color.white)
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 28)
-                    .layoutPriority(0)
-                    .font(.body)
-            }
-
-            Text({
-                let isInvertedHighlighting = (suggestion.origin == .history && suggestion.type == .website)
-                var attributedString = AttributedString(suggestion.title)
-                attributedString.font = .system(.body, weight: isInvertedHighlighting ? .regular : .semibold)
-                attributedString.foregroundColor = .neutral600
-
-                if suggestion.title.lowercased() != searchText.lowercased() {
-                    if let range = attributedString.range(of: searchText) {
-                        attributedString[range].font = .system(.body, weight: isInvertedHighlighting ? .semibold : .regular)
-                    }
-                }
-
-                return attributedString
-            }())
-                .lineLimit(2)
-                .layoutPriority(1)
-
-            if suggestion.type != .search, suggestion.type != .website {
-                Spacer()
-
-                RoundedView {
-                    Text(suggestion.type.title)
-                        .tint(.neutral600)
-                        .font(.body)
-                }
-                .layoutPriority(1)
-            }
-        }
-        .frame(minHeight: 38)
-    }
 }
 
 private struct MagicSheetListButtonStyle: ButtonStyle {
@@ -259,12 +184,4 @@ private struct MagicSheetListButtonStyle: ButtonStyle {
             .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
             .animation(.easeInOut(duration: 0.2), value: configuration.isPressed)
     }
-}
-
-private struct ListItem: Identifiable {
-    var id: String { title + type }
-    let title: String
-    let image: ImageResource
-    let type: String
-    let action: () -> Void
 }
