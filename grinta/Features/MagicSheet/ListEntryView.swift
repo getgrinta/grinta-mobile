@@ -30,6 +30,10 @@ struct ListEntryView: View {
 
             Text(attributedTitle())
                 .lineLimit(2)
+                .frame(minHeight: 36, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .multilineTextAlignment(.leading)
+                .contentShape(Rectangle())
                 .layoutPriority(1)
 
             if suggestion.type != .search, suggestion.type != .website {
@@ -41,23 +45,6 @@ struct ListEntryView: View {
                         .font(.body)
                 }
                 .layoutPriority(1)
-            } else if suggestion.type == .search, suggestion.type != .website {
-                Spacer()
-
-                Button {
-                    print("KEK")
-                } label: {
-                    Image(systemSymbol: .arrowUpLeft)
-                        .resizable()
-                        .foregroundStyle(.theme)
-                        .tint(.theme)
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: 16)
-                        .font(.callout)
-                        .layoutPriority(1)
-                        .padding()
-                }
-                .border(Color.red)
             }
         }
         .frame(minHeight: 38)

@@ -46,10 +46,13 @@ struct MagicSheetView: View {
         }
     }
 
+    @State var someVal = UUID()
+
     private func MiniView() -> some View {
         ZStack {
             RoundedButton {
                 store.send(.miniViewExpandTapped)
+                someVal = UUID()
             } label: {
                 Image(systemSymbol: .plus)
                     .fontWeight(.bold)
@@ -70,15 +73,13 @@ struct MagicSheetView: View {
             HStack(alignment: .center) {
                 MagicRoundedView(isMagicEnabled: store.isRecognizingVoice) {
                     HStack {
-                        TextField(
+                        AutoSelectTextField(
                             L10n.search,
                             text: $store.searchText.sending(\.searchTextChanged).animation(.easeInOut)
                         )
                         .keyboardType(.webSearch)
+                        .autoselect(value: someVal)
                         .submitLabel(.go)
-                        .introspect(.textField, on: .iOS(.v17, .v18)) { textField in
-                            textField.enablesReturnKeyAutomatically = true
-                        }
                         .autocorrectionDisabled()
                         .focused($focusedField, equals: MagicSheet.State.Field.search)
                         .textInputAutocapitalization(.never)
@@ -160,19 +161,35 @@ struct MagicSheetView: View {
                     .opacity(store.isRecognizingVoice ? 1 : 0)
                     .animation(.easeInOut(duration: 0.3), value: store.isRecognizingVoice)
 
-                List {
+                ScrollView {
                     ForEach(store.searchSuggestions) { suggestion in
-                        Button {
-                            store.send(.performSuggestion(suggestion))
-                        } label: {
-                            ListEntryView(suggestion: suggestion, searchText: store.searchText)
+                        HStack {
+                            Button {
+                                store.send(.performSuggestion(suggestion))
+                            } label: {
+                                ListEntryView(suggestion: suggestion, searchText: store.searchText)
+                                    .background(Color.clear)
+                            }
+                            .buttonStyle(MagicSheetListButtonStyle())
+
+                            if suggestion.type == .search {
+                                Button {
+                                    store.send(.appendSearchWithSuggestion(suggestion))
+                                } label: {
+                                    Image(systemSymbol: .arrowUpLeft)
+                                        .resizable()
+                                        .foregroundStyle(.theme)
+                                        .tint(.theme)
+                                        .aspectRatio(contentMode: .fit)
+                                        .frame(width: 16)
+                                        .font(.callout)
+                                        .padding()
+                                }
+                            }
                         }
-                        .buttonStyle(MagicSheetListButtonStyle())
-                        .listRowSeparator(.hidden)
-                        .listRowBackground(Color.clear)
+                        .padding(.horizontal, 24)
                     }
                 }
-                .listStyle(.plain)
                 .opacity(store.isRecognizingVoice ? 0 : 1)
                 .animation(.easeInOut(duration: 0.3), value: store.isRecognizingVoice)
             }

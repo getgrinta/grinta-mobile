@@ -1,10 +1,3 @@
-//
-//  GrintaTests.swift
-//  grintaTests
-//
-//  Created by Aleksander Lorenc on 2/7/25.
-//
-
 import Testing
 
 struct grintaTests {

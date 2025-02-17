@@ -17,26 +17,8 @@ struct WebView: UIViewRepresentable {
         self.url = url
     }
 
-    init(
-        url: URL?,
-        brandColorClosures: [(region: ColorPickerRegion, closure: @Sendable @MainActor (Color) -> Void)],
-        websiteMetadataClosure: (@Sendable @MainActor (WebsiteMetadata) -> Void)?
-    ) {
-        self.url = url
-        self.brandColorClosures = brandColorClosures
-        self.websiteMetadataClosure = websiteMetadataClosure
-    }
-
     func makeCoordinator() -> Coordinator {
         Coordinator(self, brandColorClosures: brandColorClosures, websiteMetadataClosure: websiteMetadataClosure)
-    }
-
-    func onBrandColorChange(region: ColorPickerRegion, closure: @escaping @Sendable @MainActor (Color) -> Void) -> Self {
-        Self(url: url, brandColorClosures: brandColorClosures + [(region: region, closure: closure)], websiteMetadataClosure: websiteMetadataClosure)
-    }
-
-    func onWebsiteMetadata(closure: @escaping @Sendable @MainActor (WebsiteMetadata) -> Void) -> Self {
-        Self(url: url, brandColorClosures: brandColorClosures, websiteMetadataClosure: closure)
     }
 
     private enum UserHandler: String {
@@ -176,5 +158,19 @@ struct WebView: UIViewRepresentable {
         func webView(_: WKWebView, didFail _: WKNavigation!, withError error: Error) {
             print("WebView failed with error: \(error.localizedDescription)")
         }
+    }
+}
+
+extension WebView {
+    func onBrandColorChange(region: ColorPickerRegion, closure: @escaping @Sendable @MainActor (Color) -> Void) -> Self {
+        var copy = self
+        copy.brandColorClosures += [(region: region, closure: closure)]
+        return copy
+    }
+
+    func onWebsiteMetadata(closure: @escaping @Sendable @MainActor (WebsiteMetadata) -> Void) -> Self {
+        var copy = self
+        copy.websiteMetadataClosure = closure
+        return copy
     }
 }

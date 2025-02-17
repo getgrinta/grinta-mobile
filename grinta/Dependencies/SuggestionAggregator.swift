@@ -127,6 +127,7 @@ struct SearchSuggestion: Equatable, Identifiable, Hashable {
 
     var id: Int {
         var hasher = Hasher()
+        hasher.combine(title)
         hasher.combine(type)
         hasher.combine(url)
         return hasher.finalize()

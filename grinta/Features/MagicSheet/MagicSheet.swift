@@ -8,14 +8,13 @@ struct MagicSheet {
     struct State {
         // When heights are finalized - create specific variables for them
         static let presentationDetents: Set<PresentationDetent> = [
-            .height(40),
-            .height(100),
-            .height(200),
-            .medium,
+            .mini,
+            .compact,
+            .full,
         ]
 
         var searchText = ""
-        var presentationDetent: PresentationDetent = .medium
+        var presentationDetent: PresentationDetent = .full
         var mode: Mode = .full
         var searchBarAccessoriesVisible = true
         var searchSuggestions: [SearchSuggestion] = []
@@ -49,6 +48,7 @@ struct MagicSheet {
         case miniViewExpandTapped
         case settingsTapped
         case performSuggestion(SearchSuggestion)
+        case appendSearchWithSuggestion(SearchSuggestion)
         case archiveItem(HistoryItem)
         case submitSearch
         case stoppedRecognizingVoice
@@ -81,13 +81,18 @@ struct MagicSheet {
 
             case .presentationDetentChanged:
                 switch state.presentationDetent {
-                case .height(40):
+                case .mini:
                     state.mode = .minimized
-                default:
+                case .compact, .full:
                     state.mode = .full
+                default:
+                    break
                 }
 
                 return .none
+
+            case let .appendSearchWithSuggestion(suggestion):
+                return .send(.searchTextChanged("\(state.searchText) \(suggestion.title)"))
 
             case .stoppedRecognizingVoice:
                 state.isRecognizingVoice = false
@@ -99,7 +104,7 @@ struct MagicSheet {
                 return .merge(
                     .send(.archiveItem(HistoryItem(query: searchQuery, type: .search))),
                     .openWebsite(.init(urlToOpen)),
-                    .send(.clearSearch), .send(.changePresentationDetent(.height(40)))
+                    .send(.clearSearch), .send(.changePresentationDetent(.mini))
                 )
 
             case .voiceRecognitionTapped:
@@ -124,12 +129,14 @@ struct MagicSheet {
                 state.searchText = newText
                 state.searchBarAccessoriesVisible = query.isEmpty
 
-                return .run { [searchSuggestionClient] send in
-                    for await suggestions in try await suggestionAggregator.suggestions(remoteSuggestionClient: searchSuggestionClient, websiteMetadataClient: websiteMetadataClient, historyArchive: historyArchive, query: query) {
-                        await send(.replaceSearchSuggestions(suggestions))
+                return .cancel(id: SearchSuggestionSearchCancelId())
+                    .concatenate(with: .run { [searchSuggestionClient] send in
+                        for await suggestions in try await suggestionAggregator.suggestions(remoteSuggestionClient: searchSuggestionClient, websiteMetadataClient: websiteMetadataClient, historyArchive: historyArchive, query: query) {
+                            await send(.replaceSearchSuggestions(suggestions))
+                        }
                     }
-                }
-                .cancellable(id: SearchSuggestionSearchCancelId(), cancelInFlight: true)
+                    .cancellable(id: SearchSuggestionSearchCancelId(), cancelInFlight: true)
+                    )
 
             case let .replaceSearchSuggestions(suggestions):
                 state.searchSuggestions = suggestions
@@ -138,7 +145,7 @@ struct MagicSheet {
             case .miniViewExpandTapped:
                 state.focusedField = .search
                 return .merge(
-                    .send(.changePresentationDetent(.medium)),
+                    .send(.changePresentationDetent(.full)),
                     .run { [searchSuggestionClient, state] send in
                         let query = SearchQuery(state.searchText)
                         for await suggestions in try await suggestionAggregator.suggestions(
@@ -176,7 +183,7 @@ struct MagicSheet {
                 case .website:
                     return .merge(
                         .send(.archiveItem(HistoryItem(query: SearchQuery(suggestion.title), type: .website))),
-                        .send(.changePresentationDetent(.height(40)), animation: .easeInOut),
+                        .send(.changePresentationDetent(.mini), animation: .easeInOut),
                         // .send(.clearSearch),
                         .openWebsite(.init(suggestion.url))
                     )
@@ -189,7 +196,7 @@ struct MagicSheet {
                     return .merge(
                         .send(.archiveItem(HistoryItem(query: SearchQuery(suggestion.title), type: .search))),
                         .openWebsite(url),
-                        .send(.clearSearch), .send(.changePresentationDetent(.height(40)))
+                        .send(.clearSearch), .send(.changePresentationDetent(.mini))
                     )
                 }
 
@@ -225,7 +232,7 @@ struct MagicSheet {
                 return .concatenate(
                     .merge(
                         .send(.archiveItem(HistoryItem(query: query, type: query.isWebsiteUrl ? .website : .search))),
-                        .send(.changePresentationDetent(.height(40))),
+                        .send(.changePresentationDetent(.mini)),
                         .openWebsite(urlToOpen),
                         .run { _ in
                             await UIImpactFeedbackGenerator().impactOccurred(intensity: 0.7)
@@ -249,6 +256,16 @@ struct MagicSheet {
     }
 
     private struct SearchSuggestionSearchCancelId: Hashable {}
+}
+
+private extension PresentationDetent {
+    static let mini = PresentationDetent.height(40)
+    static let compact = PresentationDetent.height(200)
+    static let full = PresentationDetent.medium
+
+    var isMini: Bool { self == Self.mini }
+    var isCompact: Bool { self == Self.compact }
+    var isFull: Bool { self == Self.full }
 }
 
 private extension Effect where Action == MagicSheet.Action {
