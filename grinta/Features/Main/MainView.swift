@@ -44,8 +44,11 @@ struct MainView: View {
             .animation(nil, value: store.currentURL)
             .sheet(isPresented: $showSheet) {
                 MagicSheetView(store: store.scope(state: \.magicSheet, action: \.magicSheet))
+                    .sheet(item: $store.scope(state: \.destination?.settings, action: \.destination.settings)) { store in
+                        SettingsView(store: store)
+                            .presentationDetents([.height(200)])
+                    }
             }
-            .background(Color(uiColor: UIColor(red: 26 / 255, green: 26 / 255, blue: 26 / 255, alpha: 1)))
             .ignoresSafeArea(.all)
         }
     }

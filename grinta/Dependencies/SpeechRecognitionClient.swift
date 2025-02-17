@@ -255,6 +255,7 @@ struct SpeechRecognitionClient {
     var requestAuthorization: @Sendable () async throws -> Void
     var startRecording: @Sendable () async throws -> AsyncStream<String>
     var stopRecording: @Sendable () -> Void
+    var isAvailable: @Sendable () throws -> Bool
 }
 
 extension SpeechRecognitionClient: DependencyKey {
@@ -263,7 +264,10 @@ extension SpeechRecognitionClient: DependencyKey {
         return Self(
             requestAuthorization: { try await service.requestAuthorization() },
             startRecording: { try await service.startRecording() },
-            stopRecording: { service.stopRecording() }
+            stopRecording: { service.stopRecording() },
+            isAvailable: {
+                (SFSpeechRecognizer()?.isAvailable) == true
+            }
         )
     }()
 }

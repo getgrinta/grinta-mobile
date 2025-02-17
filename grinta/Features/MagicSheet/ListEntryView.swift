@@ -41,6 +41,23 @@ struct ListEntryView: View {
                         .font(.body)
                 }
                 .layoutPriority(1)
+            } else if suggestion.type == .search, suggestion.type != .website {
+                Spacer()
+
+                Button {
+                    print("KEK")
+                } label: {
+                    Image(systemSymbol: .arrowUpLeft)
+                        .resizable()
+                        .foregroundStyle(.theme)
+                        .tint(.theme)
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 16)
+                        .font(.callout)
+                        .layoutPriority(1)
+                        .padding()
+                }
+                .border(Color.red)
             }
         }
         .frame(minHeight: 38)

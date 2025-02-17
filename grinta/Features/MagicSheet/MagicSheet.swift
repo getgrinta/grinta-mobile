@@ -62,10 +62,11 @@ struct MagicSheet {
     }
 
     @Dependency(HistoryArchiveClient.self) var historyArchive
-    @Dependency(RemoteSuggestionClient.self) var searchSuggestionClient
-    @Dependency(SuggestionAggregator.self) var suggestionAggregator
-    @Dependency(WebsiteMetadataStoreClient.self) var websiteMetadataClient
     @Dependency(SpeechRecognitionClient.self) var speechRecognitionClient
+    @Dependency(SuggestionAggregator.self) var suggestionAggregator
+    @Dependency(RemoteSuggestionClient.self) var searchSuggestionClient
+    @Dependency(WebsiteMetadataStoreClient.self) var websiteMetadataClient
+    @Dependency(SearchEngineClient.self) var searchEngine
 
     var body: some ReducerOf<Self> {
         BindingReducer()
@@ -167,7 +168,11 @@ struct MagicSheet {
                 case .ai:
                     return .none
                 case .note:
-                    return .none
+                    let query = SearchQuery(suggestion.title)
+                    guard let url = searchEngine.searchURL(.startPage, query) else {
+                        return .none
+                    }
+                    return .send(.delegate(.openURL(url)))
                 case .website:
                     return .merge(
                         .send(.archiveItem(HistoryItem(query: SearchQuery(suggestion.title), type: .website))),
@@ -176,18 +181,20 @@ struct MagicSheet {
                         .openWebsite(.init(suggestion.url))
                     )
                 case .search:
-                    // Move to separate action
-                    let percentEncodedQuery = SearchQuery(suggestion.title).percentEncoded()
-                    let urlToOpen = "https://www.startpage.com/do/search?q=\(percentEncodedQuery)"
+                    let query = SearchQuery(suggestion.title)
+                    guard let url = searchEngine.searchURL(.startPage, query) else {
+                        return .none
+                    }
+
                     return .merge(
                         .send(.archiveItem(HistoryItem(query: SearchQuery(suggestion.title), type: .search))),
-                        .openWebsite(.init(urlToOpen)),
+                        .openWebsite(url),
                         .send(.clearSearch), .send(.changePresentationDetent(.height(40)))
                     )
                 }
 
             case .onAppear:
-                state.isSpeechRecognitionAvailable = ((SFSpeechRecognizer()?.isAvailable) == true)
+                state.isSpeechRecognitionAvailable = (try? speechRecognitionClient.isAvailable()) ?? false
                 return .run { [searchSuggestionClient, state] send in
                     let query = SearchQuery(state.searchText)
                     for await suggestions in try await suggestionAggregator.suggestions(
@@ -204,22 +211,22 @@ struct MagicSheet {
             case .submitSearch:
                 let query = SearchQuery(state.searchText)
 
-                let urlToOpen: String
+                let urlToOpen: URL?
 
-                // If search term is a website url - open website
-                // Else open search website with that query
-                if query.isWebsiteUrl {
-                    urlToOpen = state.searchText
+                    // If search term is a website url - open website
+                    // Else open search website with that query
+                    = if query.isWebsiteUrl
+                {
+                    URL(string: state.searchText)
                 } else {
-                    let percentEncodedQuery = query.percentEncoded()
-                    urlToOpen = "https://www.startpage.com/do/search?q=\(percentEncodedQuery)"
+                    searchEngine.searchURL(.startPage, query)
                 }
 
                 return .concatenate(
                     .merge(
                         .send(.archiveItem(HistoryItem(query: query, type: query.isWebsiteUrl ? .website : .search))),
                         .send(.changePresentationDetent(.height(40))),
-                        .openWebsite(.init(urlToOpen)),
+                        .openWebsite(urlToOpen),
                         .run { _ in
                             await UIImpactFeedbackGenerator().impactOccurred(intensity: 0.7)
                         }
@@ -247,6 +254,13 @@ struct MagicSheet {
 private extension Effect where Action == MagicSheet.Action {
     static func openWebsite(_ query: SearchQuery) -> Self {
         guard let url = query.websiteURL else { return .none }
+        return .send(.delegate(.openURL(url)))
+    }
+}
+
+private extension Effect where Action == MagicSheet.Action {
+    static func openWebsite(_ url: URL?) -> Self {
+        guard let url else { return .none }
         return .send(.delegate(.openURL(url)))
     }
 }
