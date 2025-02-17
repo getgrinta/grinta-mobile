@@ -90,7 +90,7 @@ struct MagicSheet {
                 let urlToOpen = "https://www.startpage.com/do/search?q=\(searchQuery.percentEncoded())"
                 return .merge(
                     .send(.archiveItem(HistoryItem(query: searchQuery, type: .search))),
-                    .openURL(.init(urlToOpen)),
+                    .openWebsite(.init(urlToOpen)),
                     .send(.clearSearch), .send(.changePresentationDetent(.height(40)))
                 )
 
@@ -166,7 +166,7 @@ struct MagicSheet {
                         .send(.archiveItem(HistoryItem(query: SearchQuery(suggestion.title), type: .website))),
                         .send(.changePresentationDetent(.height(40)), animation: .easeInOut),
                         // .send(.clearSearch),
-                        .openURL(.init(suggestion.url))
+                        .openWebsite(.init(suggestion.url))
                     )
                 case .search:
                     // Move to separate action
@@ -174,7 +174,7 @@ struct MagicSheet {
                     let urlToOpen = "https://www.startpage.com/do/search?q=\(percentEncodedQuery)"
                     return .merge(
                         .send(.archiveItem(HistoryItem(query: SearchQuery(suggestion.title), type: .search))),
-                        .openURL(.init(urlToOpen)),
+                        .openWebsite(.init(urlToOpen)),
                         .send(.clearSearch), .send(.changePresentationDetent(.height(40)))
                     )
                 }
@@ -211,15 +211,11 @@ struct MagicSheet {
                     .merge(
                         .send(.archiveItem(HistoryItem(query: query, type: query.isWebsiteUrl ? .website : .search))),
                         .send(.changePresentationDetent(.height(40))),
-                        .openURL(.init(urlToOpen)),
+                        .openWebsite(.init(urlToOpen)),
                         .run { _ in
                             await UIImpactFeedbackGenerator().impactOccurred(intensity: 0.7)
                         }
                     ),
-                    .run { send in
-                        try await Task.sleep(for: .milliseconds(500))
-                        await send(.changePresentationDetent(.height(40)))
-                    },
                     .send(.clearSearch)
                 )
 
@@ -241,7 +237,7 @@ struct MagicSheet {
 }
 
 private extension Effect where Action == MagicSheet.Action {
-    static func openURL(_ query: SearchQuery) -> Self {
+    static func openWebsite(_ query: SearchQuery) -> Self {
         guard let url = query.websiteURL else { return .none }
         return .send(.delegate(.openURL(url)))
     }

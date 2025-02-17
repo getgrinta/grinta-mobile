@@ -7,7 +7,7 @@ struct MagicSheetView: View {
     @Bindable var store: StoreOf<MagicSheet>
 
     @State var sheetHeight: CGFloat = 400 // Can this be optional? 400 is weird
-    @State var safeAreaInsets: EdgeInsets = .init(_all: 0)
+    @State var safeAreaInsets = EdgeInsets(.zero)
     @State var cornerRadius: CGFloat = 48
     @FocusState var focusedField: MagicSheet.State.Field?
 
