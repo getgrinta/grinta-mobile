@@ -2,86 +2,12 @@ import ComposableArchitecture
 import DeveloperToolsSupport
 import Foundation
 
-enum SuggestionType {
-    case ai
-    case note
-    case website
-    case search
-
-    var title: String {
-        switch self {
-        case .ai:
-            L10n.aiAsk
-        case .note:
-            L10n.noteCreate
-        case .website:
-            L10n.website
-        case .search:
-            L10n.search
-        }
-    }
-}
-
-private actor SuggestionCache {
-    private var cache: [String: [SearchSuggestion]] = [:]
-    private let capacity = 10
-
-    func store(query: String, suggestions: [SearchSuggestion]) {
-        if suggestions.count > 0 {
-            cache[query] = Array(suggestions.prefix(capacity))
-        }
-    }
-
-    func retrieve(query: String) -> [SearchSuggestion]? {
-        cache[query]
-    }
-}
-
-enum SuggestionOrigin {
-    case suggested
-    case history
-}
-
-struct SearchSuggestion: Equatable, Identifiable, Hashable {
-    let title: String
-    let url: String
-    let image: ImageResource?
-    let imageURL: String?
-    let type: SuggestionType
-    let origin: SuggestionOrigin
-
-    var id: Int {
-        var hasher = Hasher()
-        hasher.combine(type)
-        hasher.combine(url)
-        return hasher.finalize()
-    }
-
-    func hash(into hasher: inout Hasher) {
-        hasher.combine(id)
-    }
-}
-
-@DependencyClient
-struct SearchSuggestionClient {
-    var suggestions: @Sendable (
-        _ startPageClient: StartPageClient,
-        _ websiteMetadataClient: WebsiteMetadataStoreClient,
-        _ historyArchive: HistoryArchiveClient,
-        _ query: SearchQuery
-    ) async throws -> AsyncStream<[SearchSuggestion]>
-}
-
-enum SearchSuggestionClientError: Error {
-    case noResponses
-}
-
-extension SearchSuggestionClient: DependencyKey {
+extension SuggestionAggregator: DependencyKey {
     static let liveValue: Self = {
-        let remoteSuggestionCache = SuggestionCache()
+        let remoteSuggestionCache = RemoteSuggestionCache()
 
-        return SearchSuggestionClient(
-            suggestions: { startPageClient, websiteMetadataClient, historyArchive, query in
+        return Self(
+            suggestions: { remoteSuggestionClient, websiteMetadataClient, historyArchive, query in
                 let historyItems = await (try? historyArchive.retrieve()) ?? []
                 var metadata: [String: WebsiteMetadata] = [:]
 
@@ -113,7 +39,7 @@ extension SearchSuggestionClient: DependencyKey {
                             return
                         }
 
-                        let searchResults = await (try? startPageClient.fetchSuggestions(query)) ?? []
+                        let searchResults = await (try? remoteSuggestionClient.fetchSuggestions(query)) ?? []
 
                         let searchSuggestions = searchResults
                             .filter { $0.lowercased() != query.raw.lowercased() }
@@ -137,7 +63,7 @@ extension SearchSuggestionClient: DependencyKey {
     }()
 }
 
-enum SuggestionComposer {
+private enum SuggestionComposer {
     static func compose(
         history: [HistoryItem],
         remote: [SearchSuggestion],
@@ -184,4 +110,74 @@ enum SuggestionComposer {
 
         return suggestions + historySuggestions + remote
     }
+}
+
+struct SearchSuggestion: Equatable, Identifiable, Hashable {
+    enum Origin {
+        case suggested
+        case history
+    }
+
+    let title: String
+    let url: String
+    let image: ImageResource?
+    let imageURL: String?
+    let type: SuggestionType
+    let origin: Origin
+
+    var id: Int {
+        var hasher = Hasher()
+        hasher.combine(type)
+        hasher.combine(url)
+        return hasher.finalize()
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
+}
+
+enum SuggestionType {
+    case ai
+    case note
+    case website
+    case search
+
+    var title: String {
+        switch self {
+        case .ai:
+            L10n.aiAsk
+        case .note:
+            L10n.noteCreate
+        case .website:
+            L10n.website
+        case .search:
+            L10n.search
+        }
+    }
+}
+
+actor RemoteSuggestionCache {
+    private var cache: [String: [SearchSuggestion]] = [:]
+    private let capacity = 10
+
+    func store(query: String, suggestions: [SearchSuggestion]) {
+        if suggestions.count > 0 {
+            cache[query] = Array(suggestions.prefix(capacity))
+        }
+    }
+
+    func retrieve(query: String) -> [SearchSuggestion]? {
+        cache[query]
+    }
+}
+
+@DependencyClient
+struct SuggestionAggregator {
+    var suggestions: @Sendable (
+        _ remoteSuggestionClient: RemoteSuggestionClient,
+        _ websiteMetadataClient: WebsiteMetadataStoreClient,
+        _ historyArchive: HistoryArchiveClient,
+        _ query: SearchQuery
+    ) async throws -> AsyncStream<[SearchSuggestion]>
 }

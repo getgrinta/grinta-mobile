@@ -19,11 +19,11 @@ struct StartPageSuggestions: Decodable {
 }
 
 @DependencyClient
-struct StartPageClient {
+struct RemoteSuggestionClient {
     var fetchSuggestions: @Sendable (_ query: SearchQuery) async throws -> [String]
 }
 
-extension StartPageClient: DependencyKey {
+extension RemoteSuggestionClient: DependencyKey {
     static let liveValue: Self = .init(
         fetchSuggestions: { query in
             guard let url = URL(string: "https://www.startpage.com/osuggestions?q=\(query)") else {

@@ -58,8 +58,8 @@ struct MagicSheet {
     }
 
     @Dependency(HistoryArchiveClient.self) var historyArchive
-    @Dependency(SearchSuggestionClient.self) var searchSuggestionClient
-    @Dependency(StartPageClient.self) var startPageClient
+    @Dependency(RemoteSuggestionClient.self) var searchSuggestionClient
+    @Dependency(SuggestionAggregator.self) var suggestionAggregator
     @Dependency(WebsiteMetadataStoreClient.self) var websiteMetadataClient
     @Dependency(SpeechRecognitionClient.self) var speechRecognitionClient
 
@@ -117,7 +117,7 @@ struct MagicSheet {
                 state.searchBarAccessoriesVisible = query.isEmpty
 
                 return .run { [searchSuggestionClient] send in
-                    for await suggestions in try await searchSuggestionClient.suggestions(startPageClient: startPageClient, websiteMetadataClient: websiteMetadataClient, historyArchive: historyArchive, query: query) {
+                    for await suggestions in try await suggestionAggregator.suggestions(remoteSuggestionClient: searchSuggestionClient, websiteMetadataClient: websiteMetadataClient, historyArchive: historyArchive, query: query) {
                         await send(.replaceSearchSuggestions(suggestions))
                     }
                 }
@@ -133,8 +133,8 @@ struct MagicSheet {
                     .send(.changePresentationDetent(.medium)),
                     .run { [searchSuggestionClient, state] send in
                         let query = SearchQuery(state.searchText)
-                        for await suggestions in try await searchSuggestionClient.suggestions(
-                            startPageClient: startPageClient,
+                        for await suggestions in try await suggestionAggregator.suggestions(
+                            remoteSuggestionClient: searchSuggestionClient,
                             websiteMetadataClient: websiteMetadataClient,
                             historyArchive: historyArchive,
                             query: query
@@ -182,8 +182,8 @@ struct MagicSheet {
             case .onAppear:
                 return .run { [searchSuggestionClient, state] send in
                     let query = SearchQuery(state.searchText)
-                    for await suggestions in try await searchSuggestionClient.suggestions(
-                        startPageClient: startPageClient,
+                    for await suggestions in try await suggestionAggregator.suggestions(
+                        remoteSuggestionClient: searchSuggestionClient,
                         websiteMetadataClient: websiteMetadataClient,
                         historyArchive: historyArchive,
                         query: query
