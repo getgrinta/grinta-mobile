@@ -43,10 +43,7 @@ struct MainView: View {
             }
             .animation(nil, value: store.currentURL)
             .sheet(isPresented: $showSheet) {
-                // Replace closures with specialized methods on MagicSheetView
-                MagicSheetView(store: store.scope(state: \.magicSheet, action: \.magicSheet), settingsPresented: {
-                    settingsPresented = true
-                })
+                MagicSheetView(store: store.scope(state: \.magicSheet, action: \.magicSheet))
             }
             .background(Color(uiColor: UIColor(red: 26 / 255, green: 26 / 255, blue: 26 / 255, alpha: 1)))
             .ignoresSafeArea(.all)

@@ -1,4 +1,5 @@
 import ComposableArchitecture
+import Speech
 import SwiftUI
 
 @Reducer
@@ -19,6 +20,7 @@ struct MagicSheet {
         var searchBarAccessoriesVisible = true
         var searchSuggestions: [SearchSuggestion] = []
         var isRecognizingVoice = false
+        var isSpeechRecognitionAvailable = false
 
         enum Field: Hashable, Sendable {
             case search
@@ -38,12 +40,14 @@ struct MagicSheet {
     enum Action: BindableAction {
         enum Delegate {
             case openURL(URL)
+            case openSettings
         }
 
         case searchTextChanged(String)
         case changePresentationDetent(PresentationDetent)
         case clearSearch
         case miniViewExpandTapped
+        case settingsTapped
         case performSuggestion(SearchSuggestion)
         case archiveItem(HistoryItem)
         case submitSearch
@@ -70,6 +74,9 @@ struct MagicSheet {
             switch action {
             case .binding(\.presentationDetent):
                 return .send(.presentationDetentChanged)
+
+            case .settingsTapped:
+                return .send(.delegate(.openSettings))
 
             case .presentationDetentChanged:
                 switch state.presentationDetent {
@@ -180,6 +187,7 @@ struct MagicSheet {
                 }
 
             case .onAppear:
+                state.isSpeechRecognitionAvailable = ((SFSpeechRecognizer()?.isAvailable) == true)
                 return .run { [searchSuggestionClient, state] send in
                     let query = SearchQuery(state.searchText)
                     for await suggestions in try await suggestionAggregator.suggestions(

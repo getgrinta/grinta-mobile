@@ -11,8 +11,6 @@ struct MagicSheetView: View {
     @State var cornerRadius: CGFloat = 48
     @FocusState var focusedField: MagicSheet.State.Field?
 
-    let settingsPresented: () -> Void
-
     var body: some View {
         GeometryReader { viewSize in
             VStack(spacing: 0) {
@@ -63,6 +61,11 @@ struct MagicSheetView: View {
 
     @ViewBuilder
     private func FullView() -> some View {
+        let shouldDisplayMic =
+            store.isSpeechRecognitionAvailable &&
+            store.searchBarContainsText == false &&
+            store.isRecognizingVoice == false
+
         VStack(spacing: 8) {
             HStack(alignment: .center) {
                 MagicRoundedView(isMagicEnabled: store.isRecognizingVoice) {
@@ -119,7 +122,7 @@ struct MagicSheetView: View {
                                 .opacity(0.8)
                                 .padding(20)
                         }
-                        .opacity((store.searchBarContainsText || store.isRecognizingVoice) ? 0 : 1)
+                        .opacity(shouldDisplayMic ? 1 : 0)
                     }
                 }
                 .animation(.easeInOut, value: store.searchText.isEmpty)
@@ -137,7 +140,7 @@ struct MagicSheetView: View {
                     .animation(.easeInOut(duration: 0.1), value: store.searchBarAccessoriesVisible)
 
                     RoundedButton {
-                        settingsPresented()
+                        store.send(.settingsTapped)
                     } label: {
                         Image(.menu)
                             .renderingMode(.template)
