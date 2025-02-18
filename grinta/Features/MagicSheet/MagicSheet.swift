@@ -1,5 +1,4 @@
 import ComposableArchitecture
-import Speech
 import SwiftUI
 
 @Reducer
@@ -16,6 +15,8 @@ struct MagicSheet {
         var searchText = ""
         var presentationDetent: PresentationDetent = .full
         var mode: Mode = .full
+        var cornerRadius: CGFloat = 48
+        var sheetHeight: CGFloat = 400
         var searchBarAccessoriesVisible = true
         var searchSuggestions: [SearchSuggestion] = []
         var isRecognizingVoice = false
@@ -56,6 +57,7 @@ struct MagicSheet {
         case onAppear
         case presentationDetentChanged
         case voiceRecognitionTapped
+        case setCornerRadius(CGFloat)
         case replaceSearchSuggestions([SearchSuggestion])
         case binding(BindingAction<State>)
         case delegate(Delegate)
@@ -67,6 +69,7 @@ struct MagicSheet {
     @Dependency(RemoteSuggestionClient.self) var searchSuggestionClient
     @Dependency(WebsiteMetadataStoreClient.self) var websiteMetadataClient
     @Dependency(SearchEngineClient.self) var searchEngine
+    @Dependency(\.mainRunLoop) var runLoop
 
     var body: some ReducerOf<Self> {
         BindingReducer()
@@ -94,13 +97,20 @@ struct MagicSheet {
             case let .appendSearchWithSuggestion(suggestion):
                 return .send(.searchTextChanged("\(state.searchText) \(suggestion.title)"))
 
+            case let .setCornerRadius(cornerRadius):
+                state.cornerRadius = cornerRadius
+                return .none
+
             case .stoppedRecognizingVoice:
                 state.isRecognizingVoice = false
 
                 let searchQuery = SearchQuery(state.searchText)
                 guard searchQuery.isEmpty == false else { return .none }
 
-                let urlToOpen = "https://www.startpage.com/do/search?q=\(searchQuery.percentEncoded())"
+                guard let urlToOpen = searchEngine.searchURL(.startPage, searchQuery) else {
+                    return .none
+                }
+
                 return .merge(
                     .send(.archiveItem(HistoryItem(query: searchQuery, type: .search))),
                     .openWebsite(.init(urlToOpen)),
@@ -135,8 +145,7 @@ struct MagicSheet {
                             await send(.replaceSearchSuggestions(suggestions))
                         }
                     }
-                    .cancellable(id: SearchSuggestionSearchCancelId(), cancelInFlight: true)
-                    )
+                    .cancellable(id: SearchSuggestionSearchCancelId(), cancelInFlight: true))
 
             case let .replaceSearchSuggestions(suggestions):
                 state.searchSuggestions = suggestions
@@ -160,8 +169,20 @@ struct MagicSheet {
                     .cancellable(id: SearchSuggestionSearchCancelId(), cancelInFlight: true)
                 )
 
-            case .sheetSizeChanged:
-                return .none
+            case let .sheetSizeChanged(size): // Steer the corner radius through the reducer to avoid cyclic layouting
+                state.sheetHeight = size.height
+
+                let cornerRadius = state.cornerRadius
+
+                return .run { [cornerRadius] send in
+                    guard !Task.isCancelled else { return }
+                    let newCornerRadius = max(0, min(40, size.height - 120))
+
+                    if cornerRadius != newCornerRadius {
+                        await send(.setCornerRadius(newCornerRadius))
+                    }
+                }
+                .throttle(id: SheetSizeChangeThrottleId(), for: .milliseconds(10), scheduler: runLoop, latest: true)
 
             case let .changePresentationDetent(detent):
                 state.presentationDetent = detent
@@ -256,6 +277,7 @@ struct MagicSheet {
     }
 
     private struct SearchSuggestionSearchCancelId: Hashable {}
+    private struct SheetSizeChangeThrottleId: Hashable {}
 }
 
 private extension PresentationDetent {

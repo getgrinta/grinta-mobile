@@ -1,14 +1,11 @@
 import ComposableArchitecture
 import SwiftUI
-import SwiftUIIntrospect
 
 struct MagicSheetView: View {
     @Environment(\.colorScheme) private var colorScheme
     @Bindable var store: StoreOf<MagicSheet>
 
-    @State var sheetHeight: CGFloat = 400 // Can this be optional? 400 is weird
     @State var safeAreaInsets = EdgeInsets(.zero)
-    @State var cornerRadius: CGFloat = 48
     @FocusState var focusedField: MagicSheet.State.Field?
 
     var body: some View {
@@ -16,37 +13,38 @@ struct MagicSheetView: View {
             VStack(spacing: 0) {
                 ZStack(alignment: .top) {
                     FullView()
-                        .opacity(min(1, max(0, (sheetHeight - CGFloat(80)) / CGFloat(safeAreaInsets.bottom))))
+                        .opacity(min(1, max(0, (store.sheetHeight - CGFloat(80)) / CGFloat(safeAreaInsets.bottom))))
                         .allowsHitTesting(store.mode == .full)
 
                     MiniView()
-                        .opacity(min(1, max(0, CGFloat(2) - sheetHeight / CGFloat(safeAreaInsets.bottom))))
+                        .opacity(min(1, max(0, CGFloat(2) - store.sheetHeight / CGFloat(safeAreaInsets.bottom))))
                         .allowsHitTesting(store.mode == .minimized)
                 }
+                .preference(key: SizePreferenceKey.self, value: viewSize.size)
             }
             .onAppear {
                 safeAreaInsets = viewSize.safeAreaInsets
             }
-            .onChange(of: viewSize.size) { _, newSize in
-                cornerRadius = max(0, min(48, newSize.height - 120))
-                sheetHeight = newSize.height
-
-                store.send(.sheetSizeChanged(newSize))
+            .onPreferenceChange(SizePreferenceKey.self) { value in
+                Task { @MainActor in
+                    store.send(.sheetSizeChanged(value))
+                }
             }
         }
         .bind($store.focusedField, to: $focusedField)
         .presentationDetents(MagicSheet.State.presentationDetents, selection: $store.presentationDetent)
         .interactiveDismissDisabled()
         .presentationBackground(.thinMaterial)
-        .presentationDragIndicator(store.mode == .full ? .visible : .hidden)
-        .presentationCornerRadius(cornerRadius)
+        //.presentationDragIndicator(store.mode == .full ? .visible : .hidden)
+        .presentationDragIndicator(.hidden)
+        .presentationCornerRadius(CGFloat(store.cornerRadius))
         .presentationBackgroundInteraction(.enabled)
         .onAppear {
             store.send(.onAppear)
         }
     }
 
-    @State var someVal = UUID()
+    @State var someVal: UUID? = nil
 
     private func MiniView() -> some View {
         ZStack {
@@ -153,8 +151,8 @@ struct MagicSheetView: View {
                     .animation(.easeInOut(duration: 0.1), value: store.searchBarAccessoriesVisible)
                 }
             }
-            .padding(.top, 32)
-            .padding(.horizontal, 24)
+            .padding(.top, 16)
+            .padding(.horizontal, 16)
 
             ZStack {
                 OrbitingParticlesView()
@@ -203,5 +201,14 @@ private struct MagicSheetListButtonStyle: ButtonStyle {
             .opacity(configuration.isPressed ? 0.8 : 1)
             .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
             .animation(.easeInOut(duration: 0.2), value: configuration.isPressed)
+    }
+}
+
+private struct SizePreferenceKey: PreferenceKey {
+    typealias Value = CGSize
+    static let defaultValue: Value = .zero
+
+    static func reduce(value: inout Value, nextValue: () -> Value) {
+        value = nextValue()
     }
 }

@@ -3,6 +3,19 @@ import Dependencies
 import SFSafeSymbols
 import SwiftUI
 
+struct Tab: Identifiable, Hashable {
+    var id = UUID()
+
+    let creationTime: Date
+    let title: String
+    let url: URL
+    let snapshot: Image?
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
+}
+
 @Reducer
 struct Main {
     @Reducer
@@ -22,6 +35,7 @@ struct Main {
     struct State {
         var magicSheet = MagicSheet.State()
         @Presents var destination: Destination.State?
+        
         var currentURL: URL?
     }
 

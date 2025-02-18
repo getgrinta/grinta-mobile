@@ -48,7 +48,7 @@ extension SearchEngineClient: DependencyKey {
         searchURL: { engine, query in
             var components = URLComponents(string: engine.baseURL)
             components?.queryItems = [
-                URLQueryItem(name: engine.queryParameter, value: query.percentEncoded()),
+                URLQueryItem(name: engine.queryParameter, value: query.raw),
             ]
             return components?.url
         }

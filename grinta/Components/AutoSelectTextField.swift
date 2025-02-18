@@ -101,7 +101,9 @@ struct AutoSelectTextField: UIViewRepresentable {
     private func handleAutoSelection(_ textField: CustomizableTextField, context: Context) {
         if autoSelectTrigger != context.coordinator.lastAutoSelectTrigger {
             context.coordinator.lastAutoSelectTrigger = autoSelectTrigger
-            textField.selectAll(nil)
+            DispatchQueue.main.async {
+                textField.selectAll(nil)
+            }
         }
     }
 }
@@ -155,7 +157,7 @@ extension AutoSelectTextField {
         return copy
     }
 
-    func autoselect(value: AnyHashable) -> Self {
+    func autoselect(value: AnyHashable?) -> Self {
         var copy = self
         copy.autoSelectTrigger = value
         return copy
