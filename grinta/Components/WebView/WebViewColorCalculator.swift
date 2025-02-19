@@ -18,11 +18,12 @@ enum WebViewRegion {
 struct WebViewAverageColorCalculator {
     private let averageColorCalculator = AverageColorCalculator()
 
-    func calculateAverageColor(for webView: WKWebView,
-                               in region: WebViewRegion) async -> Result<UIColor, WebViewColorCalculatorError>
-    {
+    func calculateAverageColor(
+        for webView: WKWebView,
+        in region: WebViewRegion
+    ) async -> Result<UIColor, WebViewColorCalculatorError> {
         let config = WKSnapshotConfiguration()
-        // Snapshot must be taken on the main thread.
+
         let (image, error) = await withCheckedContinuation { continuation in
             webView.takeSnapshot(with: config) { image, error in
                 continuation.resume(returning: (image, error))

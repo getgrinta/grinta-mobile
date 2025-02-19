@@ -25,7 +25,6 @@ struct WebView: UIViewRepresentable {
     }
 
     func makeUIView(context: Context) -> WKWebView {
-        print("Doing view with url \(url)")
         let webView = WebViewHolder.shared.webView(for: id, messageHandler: context.coordinator)
         context.coordinator.lastUILoadedURL = url
         context.coordinator.webView = webView
@@ -45,7 +44,6 @@ struct WebView: UIViewRepresentable {
 
         let shouldLoad = context.coordinator.lastUILoadedURL.map { !url.isEquivalent(to: $0) } ?? true
         if shouldLoad {
-            print("Should load...")
             context.coordinator.lastUILoadedURL = url
             webView.load(URLRequest(url: url))
         }
@@ -56,7 +54,6 @@ struct WebView: UIViewRepresentable {
         }
     }
 
-    @MainActor
     final class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
         let parent: WebView
         let brandColorClosures: [(region: ColorPickerRegion, closure: @Sendable @MainActor (Color) -> Void)]
@@ -64,6 +61,7 @@ struct WebView: UIViewRepresentable {
         let snapshotClosure: (@Sendable @MainActor (Image) -> Void)?
         var lastUILoadedURL: URL?
         var token: NSKeyValueObservation?
+        private var lastBrandColorPick: Date = .distantPast
 
         unowned var webView: WKWebView? {
             didSet {
@@ -73,10 +71,16 @@ struct WebView: UIViewRepresentable {
                 token = nil
 
                 // Throttle & cancel previous tasks
-                token = webView.observe(\.scrollView.contentOffset, options: [.old, .new]) { _, change in
-                    guard change.oldValue != change.newValue else { return }
-                    Task {
-                        await self.pickBrandColors(webView: webView, onlyBottom: true)
+                token = webView.observe(\.scrollView.contentOffset, options: [.old, .new]) { [weak self] _, change in
+                    guard let self, change.oldValue != change.newValue else { return }
+
+                    // TODO: Improve the throttling
+                    let now = Date()
+                    if now.timeIntervalSince(lastBrandColorPick) > 0.3 {
+                        lastBrandColorPick = now
+                        Task {
+                            await self.pickBrandColors(webView: webView, onlyBottom: true)
+                        }
                     }
                 }
             }
@@ -103,7 +107,6 @@ struct WebView: UIViewRepresentable {
         }
 
         private func pickBrandColors(webView: WKWebView, onlyBottom: Bool = false) {
-            print("Taking snapshot")
             for brandColorClosure in brandColorClosures {
                 let webViewRegion: WebViewRegion = switch brandColorClosure.region {
                 case let .bottom(value):
@@ -124,6 +127,9 @@ struct WebView: UIViewRepresentable {
 
                     switch result {
                     case let .success(color):
+                        if case WebViewRegion.top = webViewRegion {
+                            print("Picked top color \(color)")
+                        }
                         await brandColorClosure.closure(Color(color))
                     case let .failure(failure):
                         print("Failure to pick brand color: \(failure)")
@@ -134,16 +140,16 @@ struct WebView: UIViewRepresentable {
 
         func webView(_ webView: WKWebView, didFinish _: WKNavigation!) {
             guard webView == self.webView else { return }
-            print("Taking snapshot")
             pickBrandColors(webView: webView)
 
             Task { @MainActor [snapshotClosure] in
+                try await Task.sleep(for: .milliseconds(500))
                 let config = WKSnapshotConfiguration()
 
                 // take smaller dim??
                 // fix warnings
                 // make only 1 snapshot and pass to colors etc
-                config.rect = CGRect(x: 0, y: 0, width: webView.frame.width, height: webView.frame.width)
+                config.rect = CGRect(x: 0, y: 0, width: webView.frame.width, height: webView.frame.width * 1.176)
                 // Snapshot must be taken on the main thread.
                 let (image, error) = await withCheckedContinuation { continuation in
                     webView.takeSnapshot(with: config) { image, error in

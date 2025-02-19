@@ -7,21 +7,25 @@ struct MainView: View {
 
     @State private var showSheet = true
     @State private var settingsPresented = false
-    @State private var topColor = Color.neutral100
-    @State private var bottomColor = Color.neutral100
 
     @Namespace private var namespace
 
     var body: some View {
         GeometryReader { proxy in
             VStack(spacing: 0) {
-                StatusBarCoverView(color: topColor, safeAreaInsets: proxy.safeAreaInsets)
+                StatusBarCoverView(
+                    color: store.currentTab?.topBrandColor ?? .neutral300,
+                    safeAreaInsets: proxy.safeAreaInsets
+                )
 
                 ZStack {
                     if store.currentTab == nil {
                         TabPickerView(namespace: namespace, onSelectedTab: { tab in
                             store.send(.selectTab(tab), animation: .spring)
+                        }, onCloseTab: { tab in
+                            store.send(.closeTab(tab))
                         }, tabs: store.tabs.elements, selectedTabId: store.currentTabId)
+                            .background(Color(UIColor(white: 0.2, alpha: 1)))
                     }
 
                     // Web view image overlay for perfect matched geometry
@@ -41,23 +45,18 @@ struct MainView: View {
                     if let currentTab = store.currentTab {
                         WebView(url: currentTab.url, id: currentTab.id)
                             .onBrandColorChange(region: .top(20)) { color in
-                                withAnimation {
-                                    topColor = color
-                                }
+                                store.send(.brandColorChange(.top, color, currentTab.id), animation: .easeInOut)
                             }
                             .onBrandColorChange(region: .bottom(20)) { color in
-                                withAnimation {
-                                    bottomColor = color
-                                }
+                                store.send(.brandColorChange(.bottom, color, currentTab.id), animation: .easeInOut)
                             }
                             .onSnapshot { image in
-                                print("got snapshot")
                                 store.send(.receivedTabSnapshot(id: currentTab.id, image))
                             }
                             .onWebsiteMetadata { metadata in
-                                store.send(.websiteMetadataFetched(metadata))
+                                store.send(.websiteMetadataFetched(currentTab.id, metadata))
                             }
-                            .background(Color.white)
+                            // .background(Color.white)
                             .matchedGeometryEffect(id: currentTab.id, in: namespace)
                             .transition(.scale)
                             .animation(.easeInOut, value: currentTab.id)
@@ -72,7 +71,7 @@ struct MainView: View {
                 }
                 // .animation(nil, value: store.currentTab)
 
-                BottomBarBackgroundView(color: bottomColor)
+                BottomBarBackgroundView(color: store.currentTab?.bottomBrandColor ?? .neutral400)
             }
             // .animation(nil, value: store.currentTab)
             .sheet(isPresented: $showSheet) {

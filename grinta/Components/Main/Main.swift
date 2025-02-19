@@ -3,6 +3,11 @@ import Dependencies
 import SFSafeSymbols
 import SwiftUI
 
+enum BrandColorRegion {
+    case top
+    case bottom
+}
+
 @Reducer
 struct Main {
     @Reducer
@@ -14,10 +19,12 @@ struct Main {
     enum Action: BindableAction {
         case binding(BindingAction<State>)
         case magicSheet(MagicSheet.Action)
-        case selectTab(BrowserTab)
+        case selectTab(BrowserTab) // change to accept ID
+        case closeTab(BrowserTab) // change to accept ID
         case destination(PresentationAction<Destination.Action>)
-        case websiteMetadataFetched(WebsiteMetadata)
+        case websiteMetadataFetched(BrowserTab.ID, WebsiteMetadata)
         case receivedTabSnapshot(id: BrowserTab.ID, Image)
+        case brandColorChange(BrandColorRegion, Color, BrowserTab.ID)
     }
 
     @ObservableState
@@ -45,6 +52,15 @@ struct Main {
             case .binding:
                 return .none
 
+            case let .brandColorChange(region, color, tabId):
+                switch region {
+                case .top:
+                    state.tabs[id: tabId]?.topBrandColor = color
+                case .bottom:
+                    state.tabs[id: tabId]?.bottomBrandColor = color
+                }
+                return .none
+
             case let .receivedTabSnapshot(id, image):
                 state.tabs[id: id]?.snapshot = image
                 return .none
@@ -53,13 +69,17 @@ struct Main {
                 state.currentTabId = tab.id
                 return .none
 
+            case let .closeTab(tab):
+                state.tabs.remove(tab)
+                return .none
+
             case .destination:
                 return .none
 
             case let .magicSheet(action):
                 switch action {
                 case let .delegate(.openURL(url)):
-                    let tab = BrowserTab(creationTime: now(), title: url.absoluteString, url: url, snapshot: nil)
+                    let tab = BrowserTab(creationTime: now(), url: url, title: url.absoluteString, snapshot: nil)
                     state.tabs.append(tab)
                     state.currentTabId = tab.id
                     return .none
@@ -76,7 +96,9 @@ struct Main {
                     return .none
                 }
 
-            case let .websiteMetadataFetched(metadata):
+            case let .websiteMetadataFetched(id, metadata):
+                state.tabs[id: id]?.title = metadata.title
+                state.tabs[id: id]?.faviconURL = URL(string: metadata.favicon)
                 return .run { _ in
                     try await websiteMetadataClient.store(item: metadata, hostname: SearchQuery(metadata.host).canonicalHost)
                 }

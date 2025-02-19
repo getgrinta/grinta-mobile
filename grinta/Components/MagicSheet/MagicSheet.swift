@@ -207,7 +207,7 @@ struct MagicSheet {
                     return .merge(
                         .send(.archiveItem(HistoryItem(query: SearchQuery(suggestion.title), type: .website))),
                         .send(.changePresentationDetent(.mini), animation: .easeInOut),
-                        // .send(.clearSearch),
+                        .send(.clearSearch),
                         .openWebsite(.init(suggestion.url))
                     )
                 case .search:
@@ -219,7 +219,8 @@ struct MagicSheet {
                     return .merge(
                         .send(.archiveItem(HistoryItem(query: SearchQuery(suggestion.title), type: .search))),
                         .openWebsite(url),
-                        .send(.clearSearch), .send(.changePresentationDetent(.mini))
+                        .send(.clearSearch),
+                        .send(.changePresentationDetent(.mini))
                     )
                 }
 
