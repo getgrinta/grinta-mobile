@@ -11,8 +11,6 @@ struct MainView: View {
     @State private var bottomColor = Color.neutral100
 
     @Namespace private var namespace
-    // When non‑nil, an image was selected and the web view appears.
-    @State private var selectedImage: String? = nil
 
     var body: some View {
         GeometryReader { proxy in
@@ -20,16 +18,15 @@ struct MainView: View {
                 StatusBarCoverView(color: topColor, safeAreaInsets: proxy.safeAreaInsets)
 
                 ZStack {
-                    TabContainerView(namespace: namespace, selectedImage: selectedImage, onSelectedImage: {
-                        selectedImage = $0
-                    })
-                    .background(topColor)
+                    TabPickerView(namespace: namespace, onSelectedTab: { tab in
+                        store.send(.selectTab(tab), animation: .spring)
+                    }, tabs: store.tabs.elements, selectedTabId: store.currentTabId)
 
                     // --- Web View Overlay ---
-                    if let selectedImage {
-                        ZStack {
-                            // Header area: the thumbnail animates into a large header.
-                            // TODO: Fade out after 0.5s
+                    // if let currentTab = store.currentTab {
+                    // ZStack {
+                    // Header area: the thumbnail animates into a large header.
+                    // TODO: Fade out after 0.5s
 //                            Image(selectedImage)
 //                                .resizable()
 //                                .aspectRatio(contentMode: .fill)
@@ -42,48 +39,39 @@ struct MainView: View {
 //                                    }
 //                                }
 
-                            WebView(url: store.currentURL)
-                                .onBrandColorChange(region: .top(20)) { color in
-                                    withAnimation {
-                                        topColor = color
-                                    }
+                    ForEach(store.tabs) { tab in
+                        WebView(url: tab.url)
+                            .onBrandColorChange(region: .top(20)) { color in
+                                withAnimation {
+                                    topColor = color
                                 }
-                                .onBrandColorChange(region: .bottom(20)) { color in
-                                    withAnimation {
-                                        bottomColor = color
-                                    }
-                                }
-                                .onWebsiteMetadata { metadata in
-                                    store.send(.websiteMetadataFetched(metadata))
-                                }
-                        }
-                        .matchedGeometryEffect(id: selectedImage, in: namespace)
-                        .background(Color.white)
-                        // Transition animation for the web view overlay.
-                        .transition(.scale)
-                        // Overlay a button in the web view to return to the grid.
-                        .overlay(
-                            VStack {
-                                HStack {
-                                    Spacer()
-                                    Button(action: {
-                                        withAnimation(.spring()) {
-                                            self.selectedImage = nil
-                                        }
-                                    }) {
-                                        Text("Back")
-                                            .padding(8)
-                                            .background(Color.black.opacity(0.7))
-                                            .foregroundColor(.white)
-                                            .cornerRadius(8)
-                                    }
-                                    .padding()
-                                }
-                                Spacer()
                             }
-                        )
+                            .onBrandColorChange(region: .bottom(20)) { color in
+                                withAnimation {
+                                    bottomColor = color
+                                }
+                            }
+                            .onSnapshot { image in
+                                if let currentTab = store.currentTab {
+                                    store.send(.receivedTabSnapshot(id: currentTab.id, image))
+                                }
+                            }
+                            .onWebsiteMetadata { metadata in
+                                store.send(.websiteMetadataFetched(metadata))
+                            }
+
+                            // }
+                            .background(Color.white)
+                            .opacity(store.currentTab == tab ? 1 : 0)
+                            // Transition animation for the web view overlay.
+                            .matchedGeometryEffect(id: store.currentTab, in: namespace)
+                            .transition(.scale)
+                            .animation(.spring, value: store.currentTab)
                     }
+
+                    // Overlay a button in the web view to return to the grid.
                 }
+                // }
 
 //                Group {
 //                    WebView(url: store.currentURL)
@@ -107,11 +95,11 @@ struct MainView: View {
                 .containerRelativeFrame(.vertical, alignment: .top) { length, _ in
                     length - proxy.safeAreaInsets.bottom
                 }
-                .animation(nil, value: store.currentURL)
+                // .animation(nil, value: store.currentTab)
 
                 BottomBarBackgroundView(color: bottomColor)
             }
-            .animation(nil, value: store.currentURL)
+            // .animation(nil, value: store.currentTab)
             .sheet(isPresented: $showSheet) {
                 MagicSheetView(store: store.scope(state: \.magicSheet, action: \.magicSheet))
                     .sheet(item: $store.scope(state: \.destination?.settings, action: \.destination.settings)) { store in
@@ -148,41 +136,4 @@ private struct StatusBarCoverView: View {
             Main()
         }
     )
-}
-
-struct TabContainerView: View {
-    let namespace: Namespace.ID
-
-    // When non‑nil, an image was selected and the web view appears.
-    var selectedImage: String? = nil
-    var onSelectedImage: (String) -> Void
-    // Example thumbnails: use names of images in your asset catalog.
-    let thumbnails = ["image1", "thumb2", "thumb3", "thumb4", "thumb5"]
-
-    var body: some View {
-        ScrollView {
-            LazyVGrid(columns: [GridItem(.flexible()),
-                                GridItem(.flexible())],
-                      spacing: 10)
-            {
-                ForEach(thumbnails, id: \.self) { imageName in
-                    Image(imageName)
-                        .resizable()
-                        .aspectRatio(1, contentMode: .fit)
-                        .clipped()
-                        .border(Color.red)
-                        // Both grid and header share this matched geometry.
-                        .matchedGeometryEffect(id: imageName, in: namespace)
-                        .onTapGesture {
-                            withAnimation(.spring()) {
-                                onSelectedImage(imageName)
-                            }
-                        }
-                }
-            }
-            .padding()
-        }
-        // Hide the grid when a thumbnail is selected.
-        .opacity(selectedImage == nil ? 1 : 0)
-    }
 }

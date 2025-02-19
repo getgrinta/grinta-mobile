@@ -41,12 +41,14 @@ struct MagicSheet {
         enum Delegate {
             case openURL(URL)
             case openSettings
+            case openTabs
         }
 
         case searchTextChanged(String)
         case changePresentationDetent(PresentationDetent)
         case clearSearch
         case miniViewExpandTapped
+        case openTabsTapped
         case settingsTapped
         case performSuggestion(SearchSuggestion)
         case appendSearchWithSuggestion(SearchSuggestion)
@@ -239,13 +241,10 @@ struct MagicSheet {
             case .submitSearch:
                 let query = SearchQuery(state.searchText)
 
-                let urlToOpen: URL?
-
-                    // If search term is a website url - open website
-                    // Else open search website with that query
-                    = if query.isWebsiteUrl
-                {
-                    URL(string: state.searchText)
+                // If search term is a website url - open website
+                // Else open search website with that query
+                let urlToOpen = if query.isWebsiteUrl {
+                    query.websiteURL
                 } else {
                     searchEngine.searchURL(.startPage, query)
                 }
@@ -272,6 +271,9 @@ struct MagicSheet {
 
             case .delegate:
                 return .none
+
+            case .openTabsTapped:
+                return .send(.changePresentationDetent(.mini)).concatenate(with: .send(.delegate(.openTabs)))
             }
         }
     }
@@ -293,13 +295,13 @@ private extension PresentationDetent {
 private extension Effect where Action == MagicSheet.Action {
     static func openWebsite(_ query: SearchQuery) -> Self {
         guard let url = query.websiteURL else { return .none }
-        return .send(.delegate(.openURL(url)))
+        return .send(.delegate(.openURL(url)), animation: .spring)
     }
 }
 
 private extension Effect where Action == MagicSheet.Action {
     static func openWebsite(_ url: URL?) -> Self {
         guard let url else { return .none }
-        return .send(.delegate(.openURL(url)))
+        return .send(.delegate(.openURL(url)), animation: .spring)
     }
 }

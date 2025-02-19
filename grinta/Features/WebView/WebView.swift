@@ -12,13 +12,14 @@ struct WebView: UIViewRepresentable {
 
     private var brandColorClosures: [(region: ColorPickerRegion, closure: @Sendable @MainActor (Color) -> Void)] = []
     private var websiteMetadataClosure: (@Sendable @MainActor (WebsiteMetadata) -> Void)?
+    private var snapshotClosure: (@Sendable @MainActor (Image) -> Void)?
 
     init(url: URL?) {
         self.url = url
     }
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(self, brandColorClosures: brandColorClosures, websiteMetadataClosure: websiteMetadataClosure)
+        Coordinator(self, brandColorClosures: brandColorClosures, websiteMetadataClosure: websiteMetadataClosure, snapshotClosure: snapshotClosure)
     }
 
     private enum UserHandler: String {
@@ -63,6 +64,7 @@ struct WebView: UIViewRepresentable {
         let parent: WebView
         let brandColorClosures: [(region: ColorPickerRegion, closure: @Sendable @MainActor (Color) -> Void)]
         let websiteMetadataClosure: (@Sendable @MainActor (WebsiteMetadata) -> Void)?
+        let snapshotClosure: (@Sendable @MainActor (Image) -> Void)?
         var lastUILoadedURL: URL?
         var token: NSKeyValueObservation?
 
@@ -84,11 +86,13 @@ struct WebView: UIViewRepresentable {
         init(
             _ parent: WebView,
             brandColorClosures: [(region: ColorPickerRegion, closure: @Sendable @MainActor (Color) -> Void)],
-            websiteMetadataClosure: (@Sendable @MainActor (WebsiteMetadata) -> Void)?
+            websiteMetadataClosure: (@Sendable @MainActor (WebsiteMetadata) -> Void)?,
+            snapshotClosure: (@Sendable @MainActor (Image) -> Void)?
         ) {
             self.parent = parent
             self.brandColorClosures = brandColorClosures
             self.websiteMetadataClosure = websiteMetadataClosure
+            self.snapshotClosure = snapshotClosure
         }
 
         func webView(_ webView: WKWebView, didStartProvisionalNavigation _: WKNavigation!) {
@@ -130,6 +134,24 @@ struct WebView: UIViewRepresentable {
 
         func webView(_ webView: WKWebView, didFinish _: WKNavigation!) {
             pickBrandColors(webView: webView)
+
+            Task.detached(priority: .medium) { @MainActor [weak self] in
+                let config = WKSnapshotConfiguration()
+                // take smaller dim
+                // fix warnings
+                // make only 1 snapshot and pass to colors etc
+                config.rect = CGRect(x: 0, y: 0, width: webView.frame.width, height: webView.frame.width)
+                // Snapshot must be taken on the main thread.
+                let (image, error) = await withCheckedContinuation { continuation in
+                    webView.takeSnapshot(with: config) { image, error in
+                        continuation.resume(returning: (image, error))
+                    }
+                }
+
+                if let image {
+                    self?.snapshotClosure?(Image(uiImage: image))
+                }
+            }
         }
 
         func userContentController(_: WKUserContentController, didReceive message: WKScriptMessage) {
@@ -171,6 +193,12 @@ extension WebView {
     func onWebsiteMetadata(closure: @escaping @Sendable @MainActor (WebsiteMetadata) -> Void) -> Self {
         var copy = self
         copy.websiteMetadataClosure = closure
+        return copy
+    }
+
+    func onSnapshot(closure: @escaping @Sendable @MainActor (Image) -> Void) -> Self {
+        var copy = self
+        copy.snapshotClosure = closure
         return copy
     }
 }

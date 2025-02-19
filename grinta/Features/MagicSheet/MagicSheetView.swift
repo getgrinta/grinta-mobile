@@ -35,7 +35,7 @@ struct MagicSheetView: View {
         .presentationDetents(MagicSheet.State.presentationDetents, selection: $store.presentationDetent)
         .interactiveDismissDisabled()
         .presentationBackground(.thinMaterial)
-        //.presentationDragIndicator(store.mode == .full ? .visible : .hidden)
+        // .presentationDragIndicator(store.mode == .full ? .visible : .hidden)
         .presentationDragIndicator(.hidden)
         .presentationCornerRadius(CGFloat(store.cornerRadius))
         .presentationBackgroundInteraction(.enabled)
@@ -128,7 +128,9 @@ struct MagicSheetView: View {
                 .layoutPriority(1)
 
                 if store.searchBarAccessoriesVisible {
-                    RoundedButton {} label: {
+                    RoundedButton {
+                        store.send(.openTabsTapped, animation: .spring)
+                    } label: {
                         Image(.layoutGrid)
                             .renderingMode(.template)
                             .font(.title3)
