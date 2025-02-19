@@ -4,6 +4,7 @@ import WebKit
 
 struct WebView: UIViewRepresentable {
     let url: URL?
+    let id: UUID
 
     enum ColorPickerRegion {
         case top(CGFloat)
@@ -14,48 +15,44 @@ struct WebView: UIViewRepresentable {
     private var websiteMetadataClosure: (@Sendable @MainActor (WebsiteMetadata) -> Void)?
     private var snapshotClosure: (@Sendable @MainActor (Image) -> Void)?
 
-    init(url: URL?) {
+    init(url: URL?, id: UUID) {
         self.url = url
+        self.id = id
     }
 
     func makeCoordinator() -> Coordinator {
         Coordinator(self, brandColorClosures: brandColorClosures, websiteMetadataClosure: websiteMetadataClosure, snapshotClosure: snapshotClosure)
     }
 
-    private enum UserHandler: String {
-        case source
-    }
-
     func makeUIView(context: Context) -> WKWebView {
-        let configuration = WKWebViewConfiguration()
-        let sourceScript = WKUserScript(
-            source: """
-            window.webkit.messageHandlers.\(UserHandler.source.rawValue).postMessage(document.documentElement.outerHTML);
-            """,
-            injectionTime: .atDocumentEnd,
-            forMainFrameOnly: true
-        )
-
-        configuration.userContentController.addUserScript(sourceScript)
-        configuration.userContentController.add(context.coordinator, name: UserHandler.source.rawValue)
-
-        let webView = WKWebView(frame: .zero, configuration: configuration)
+        print("Doing view with url \(url)")
+        let webView = WebViewHolder.shared.webView(for: id, messageHandler: context.coordinator)
+        context.coordinator.lastUILoadedURL = url
+        context.coordinator.webView = webView
         webView.navigationDelegate = context.coordinator
+
         if let url {
             webView.load(URLRequest(url: url))
         }
-        context.coordinator.lastUILoadedURL = url
-        context.coordinator.webView = webView
+
         return webView
     }
 
     func updateUIView(_ webView: WKWebView, context: Context) {
         guard let url else { return }
 
+        webView.navigationDelegate = context.coordinator
+
         let shouldLoad = context.coordinator.lastUILoadedURL.map { !url.isEquivalent(to: $0) } ?? true
         if shouldLoad {
+            print("Should load...")
             context.coordinator.lastUILoadedURL = url
             webView.load(URLRequest(url: url))
+        }
+
+        if context.coordinator.webView != webView {
+            context.coordinator.lastUILoadedURL = url
+            context.coordinator.webView = webView
         }
     }
 
@@ -74,6 +71,8 @@ struct WebView: UIViewRepresentable {
 
                 token?.invalidate()
                 token = nil
+
+                // Throttle & cancel previous tasks
                 token = webView.observe(\.scrollView.contentOffset, options: [.old, .new]) { _, change in
                     guard change.oldValue != change.newValue else { return }
                     Task {
@@ -104,6 +103,7 @@ struct WebView: UIViewRepresentable {
         }
 
         private func pickBrandColors(webView: WKWebView, onlyBottom: Bool = false) {
+            print("Taking snapshot")
             for brandColorClosure in brandColorClosures {
                 let webViewRegion: WebViewRegion = switch brandColorClosure.region {
                 case let .bottom(value):
@@ -133,11 +133,14 @@ struct WebView: UIViewRepresentable {
         }
 
         func webView(_ webView: WKWebView, didFinish _: WKNavigation!) {
+            guard webView == self.webView else { return }
+            print("Taking snapshot")
             pickBrandColors(webView: webView)
 
-            Task.detached(priority: .medium) { @MainActor [weak self] in
+            Task { @MainActor [snapshotClosure] in
                 let config = WKSnapshotConfiguration()
-                // take smaller dim
+
+                // take smaller dim??
                 // fix warnings
                 // make only 1 snapshot and pass to colors etc
                 config.rect = CGRect(x: 0, y: 0, width: webView.frame.width, height: webView.frame.width)
@@ -149,7 +152,7 @@ struct WebView: UIViewRepresentable {
                 }
 
                 if let image {
-                    self?.snapshotClosure?(Image(uiImage: image))
+                    snapshotClosure?(Image(uiImage: image))
                 }
             }
         }
@@ -201,4 +204,8 @@ extension WebView {
         copy.snapshotClosure = closure
         return copy
     }
+}
+
+enum UserHandler: String {
+    case source
 }

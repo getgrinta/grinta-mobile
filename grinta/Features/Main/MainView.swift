@@ -18,14 +18,13 @@ struct MainView: View {
                 StatusBarCoverView(color: topColor, safeAreaInsets: proxy.safeAreaInsets)
 
                 ZStack {
-                    TabPickerView(namespace: namespace, onSelectedTab: { tab in
-                        store.send(.selectTab(tab), animation: .spring)
-                    }, tabs: store.tabs.elements, selectedTabId: store.currentTabId)
+                    if store.currentTab == nil {
+                        TabPickerView(namespace: namespace, onSelectedTab: { tab in
+                            store.send(.selectTab(tab), animation: .spring)
+                        }, tabs: store.tabs.elements, selectedTabId: store.currentTabId)
+                    }
 
-                    // --- Web View Overlay ---
-                    // if let currentTab = store.currentTab {
-                    // ZStack {
-                    // Header area: the thumbnail animates into a large header.
+                    // Web view image overlay for perfect matched geometry
                     // TODO: Fade out after 0.5s
 //                            Image(selectedImage)
 //                                .resizable()
@@ -39,8 +38,8 @@ struct MainView: View {
 //                                    }
 //                                }
 
-                    ForEach(store.tabs) { tab in
-                        WebView(url: tab.url)
+                    if let currentTab = store.currentTab {
+                        WebView(url: currentTab.url, id: currentTab.id)
                             .onBrandColorChange(region: .top(20)) { color in
                                 withAnimation {
                                     topColor = color
@@ -52,43 +51,19 @@ struct MainView: View {
                                 }
                             }
                             .onSnapshot { image in
-                                if let currentTab = store.currentTab {
-                                    store.send(.receivedTabSnapshot(id: currentTab.id, image))
-                                }
+                                print("got snapshot")
+                                store.send(.receivedTabSnapshot(id: currentTab.id, image))
                             }
                             .onWebsiteMetadata { metadata in
                                 store.send(.websiteMetadataFetched(metadata))
                             }
-
-                            // }
                             .background(Color.white)
-                            .opacity(store.currentTab == tab ? 1 : 0)
-                            // Transition animation for the web view overlay.
-                            .matchedGeometryEffect(id: store.currentTab, in: namespace)
+                            .matchedGeometryEffect(id: currentTab.id, in: namespace)
                             .transition(.scale)
-                            .animation(.spring, value: store.currentTab)
+                            .animation(.easeInOut, value: currentTab.id)
                     }
-
-                    // Overlay a button in the web view to return to the grid.
                 }
-                // }
 
-//                Group {
-//                    WebView(url: store.currentURL)
-//                        .onBrandColorChange(region: .top(20)) { color in
-//                            withAnimation {
-//                                topColor = color
-//                            }
-//                        }
-//                        .onBrandColorChange(region: .bottom(20)) { color in
-//                            withAnimation {
-//                                bottomColor = color
-//                            }
-//                        }
-//                        .onWebsiteMetadata { metadata in
-//                            store.send(.websiteMetadataFetched(metadata))
-//                        }
-//                }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 // Don't go below bottom safe area inset
                 // which is reserved for the bottom bar

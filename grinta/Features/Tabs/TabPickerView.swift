@@ -31,7 +31,7 @@ struct TabPickerView: View {
                                     .clipped()
                             }
                         }
-                        .matchedGeometryEffect(id: tab, in: namespace, isSource: selectedTabId == tab.id)
+                        .matchedGeometryEffect(id: tab.id, in: namespace)
                     }
                 }
                 .padding()

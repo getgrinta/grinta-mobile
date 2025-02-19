@@ -295,13 +295,13 @@ private extension PresentationDetent {
 private extension Effect where Action == MagicSheet.Action {
     static func openWebsite(_ query: SearchQuery) -> Self {
         guard let url = query.websiteURL else { return .none }
-        return .send(.delegate(.openURL(url)), animation: .spring)
+        return .send(.delegate(.openURL(url)), animation: .easeInOut)
     }
 }
 
 private extension Effect where Action == MagicSheet.Action {
     static func openWebsite(_ url: URL?) -> Self {
         guard let url else { return .none }
-        return .send(.delegate(.openURL(url)), animation: .spring)
+        return .send(.delegate(.openURL(url)), animation: .easeInOut)
     }
 }
