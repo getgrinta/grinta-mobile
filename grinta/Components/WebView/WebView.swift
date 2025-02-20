@@ -30,6 +30,7 @@ struct WebView: UIViewRepresentable {
         context.coordinator.webView = webView
         webView.navigationDelegate = context.coordinator
 
+        // TODO: Redo this logic - we need to store last url for a _tab_, not the WebView...
         if let url, let webViewURL = webView.url, url.isEquivalent(to: webViewURL) == false {
             webView.load(URLRequest(url: url))
         } else if let url, webView.url == nil {

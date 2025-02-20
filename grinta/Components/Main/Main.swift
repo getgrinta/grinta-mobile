@@ -75,7 +75,7 @@ struct Main {
                 state.currentTabId = tab.id
                 state.displaySnapshotOverlay = true
 
-                // TODO: Cancellable! might backfire when
+                // TODO: Add cancellable. might backfire when
                 // closing & opening new tab
                 return .run { send in
                     try await Task.sleep(for: .milliseconds(500))
@@ -112,6 +112,7 @@ struct Main {
             case let .websiteMetadataFetched(id, metadata):
                 state.tabs[id: id]?.title = metadata.title
                 state.tabs[id: id]?.faviconURL = URL(string: metadata.favicon)
+                state.tabs[id: id]?.wasLoaded = true
                 return .run { _ in
                     try await websiteMetadataClient.store(item: metadata, hostname: SearchQuery(metadata.host).canonicalHost)
                 }

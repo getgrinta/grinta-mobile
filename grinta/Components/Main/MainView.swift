@@ -42,7 +42,7 @@ struct MainView: View {
                             .onWebsiteMetadata { metadata in
                                 store.send(.websiteMetadataFetched(currentTab.id, metadata))
                             }
-                            .if(store.displaySnapshotOverlay == false) {
+                            .if(store.displaySnapshotOverlay == false || currentTab.wasLoaded) {
                                 $0.matchedGeometryEffect(id: currentTab.id, in: namespace)
                                     .transition(.scale)
                                     .animation(.easeInOut, value: currentTab.id)
@@ -51,7 +51,7 @@ struct MainView: View {
                         // Web view image overlay for smooth matched geometry
                         // in case the tab was created from storage
                         // Covers up the initial loading
-                        if let snapshot = store.currentTab?.snapshot, store.displaySnapshotOverlay {
+                        if let snapshot = store.currentTab?.snapshot, store.displaySnapshotOverlay, currentTab.wasLoaded == false {
                             snapshot
                                 .resizable()
                                 .clipped()

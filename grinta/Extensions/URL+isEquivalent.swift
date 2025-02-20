@@ -14,7 +14,8 @@ extension URL {
         let path2 = comp2.path.isEmpty ? "/" : comp2.path
 
         return comp1.scheme?.lowercased() == comp2.scheme?.lowercased() &&
-            comp1.host?.lowercased() == comp2.host?.lowercased() &&
+            comp1.host?.lowercased().replacingOccurrences(of: "www.", with: "") ==
+            comp2.host?.lowercased().replacingOccurrences(of: "www.", with: "") &&
             comp1.port == comp2.port &&
             path1 == path2 &&
             comp1.query == comp2.query

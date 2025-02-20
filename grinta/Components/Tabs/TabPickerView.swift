@@ -12,68 +12,78 @@ struct TabPickerView: View {
     var body: some View {
         if tabs.isEmpty == false {
             ScrollView {
-                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
-                    ForEach(tabs) { tab in
-                        Button {
-                            onSelectedTab(tab)
-                        } label: {
-                            VStack(alignment: .leading, spacing: 0) {
-                                HStack(spacing: 4) {
-                                    if let faviconURL = tab.faviconURL {
-                                        AsyncImage(url: faviconURL, content: { image in
-                                            image
+                GeometryReader { proxy in
+                    let halfWidth = (proxy.size.width / 2) - 20
+
+                    let columns = [
+                        GridItem(.fixed(halfWidth)),
+                        GridItem(.fixed(halfWidth)),
+                    ]
+
+                    LazyVGrid(columns: columns, spacing: 10) {
+                        ForEach(tabs) { tab in
+                            Button {
+                                onSelectedTab(tab)
+                            } label: {
+                                VStack(alignment: .leading, spacing: 0) {
+                                    HStack(spacing: 4) {
+                                        if let faviconURL = tab.faviconURL {
+                                            AsyncImage(url: faviconURL, content: { image in
+                                                image
+                                                    .resizable()
+                                                    .cornerRadius(6)
+                                            }, placeholder: {
+                                                EmptyView()
+                                            })
+                                            .frame(width: 16, height: 16)
+                                            .aspectRatio(contentMode: .fill)
+                                            .layoutPriority(1)
+                                        }
+
+                                        Text(tab.title)
+                                            .padding(.vertical, 6)
+                                            .font(.caption)
+                                            .lineLimit(1)
+                                            .fontWeight(.medium)
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+
+                                        Button {
+                                            onCloseTab(tab)
+                                        } label: {
+                                            Image(systemSymbol: .xmark)
                                                 .resizable()
-                                                .cornerRadius(6)
-                                        }, placeholder: {
-                                            EmptyView()
-                                        })
-                                        .frame(width: 16, height: 16)
-                                        .aspectRatio(contentMode: .fill)
+                                                .frame(width: 10, height: 10)
+                                                .foregroundStyle(Color.neutral500)
+                                        }
+                                        .frame(maxHeight: .infinity)
+                                        .padding(.horizontal, 10)
                                         .layoutPriority(1)
                                     }
+                                    .frame(minHeight: 26)
+                                    .padding(.leading, 6)
+                                    .background(Color.neutral200)
+                                    .foregroundStyle(Color.neutral600)
 
-                                    Text(tab.title)
-                                        .padding(.vertical, 6)
-                                        .font(.caption)
-                                        .lineLimit(1)
-                                        .fontWeight(.medium)
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-
-                                    Button {
-                                        onCloseTab(tab)
-                                    } label: {
-                                        Image(systemSymbol: .xmark)
+                                    if let image = tab.snapshot {
+                                        image
                                             .resizable()
-                                            .frame(width: 8, height: 8)
+                                            .scaledToFill()
+                                            .frame(width: halfWidth)
+                                            .frame(height: 215, alignment: .top)
+                                    } else {
+                                        Color.neutral100
+                                            .aspectRatio(1, contentMode: .fit)
+                                            .frame(height: 215)
+                                            .clipped()
                                     }
-                                    .padding(.trailing, 4)
-                                    .layoutPriority(1)
                                 }
-                                .frame(minHeight: 26)
-                                .padding(.horizontal, 6)
-                                .background(Color.neutral200)
-                                .foregroundStyle(Color.neutral600)
-
-                                if let image = tab.snapshot {
-                                    image
-                                        .resizable()
-                                        .scaledToFill()
-                                        .frame(maxWidth: .infinity, alignment: .center)
-                                        .frame(height: 215, alignment: .top)
-                                        .clipped()
-                                } else {
-                                    Color.neutral100
-                                        .aspectRatio(1, contentMode: .fit)
-                                        .frame(height: 215)
-                                        .clipped()
-                                }
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
                             }
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .matchedGeometryEffect(id: tab.id, in: namespace)
                         }
-                        .matchedGeometryEffect(id: tab.id, in: namespace)
                     }
+                    .padding()
                 }
-                .padding()
             }
         } else {
             ZStack {
@@ -93,6 +103,7 @@ struct BrowserTab: Identifiable, Hashable {
     var faviconURL: URL?
     var topBrandColor: Color?
     var bottomBrandColor: Color?
+    var wasLoaded = false
 
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
