@@ -25,6 +25,7 @@ struct Main {
         case websiteMetadataFetched(BrowserTab.ID, WebsiteMetadata)
         case receivedTabSnapshot(id: BrowserTab.ID, Image)
         case brandColorChange(BrandColorRegion, Color, BrowserTab.ID)
+        case dismissSnapshotOverlay
     }
 
     @ObservableState
@@ -34,6 +35,7 @@ struct Main {
 
         var tabs: IdentifiedArrayOf<BrowserTab> = []
         var currentTabId: BrowserTab.ID?
+        var displaySnapshotOverlay = false
 
         var currentTab: BrowserTab? {
             guard let currentTabId else { return nil }
@@ -65,9 +67,20 @@ struct Main {
                 state.tabs[id: id]?.snapshot = image
                 return .none
 
+            case .dismissSnapshotOverlay:
+                state.displaySnapshotOverlay = false
+                return .none
+
             case let .selectTab(tab):
                 state.currentTabId = tab.id
-                return .none
+                state.displaySnapshotOverlay = true
+
+                // TODO: Cancellable! might backfire when
+                // closing & opening new tab
+                return .run { send in
+                    try await Task.sleep(for: .milliseconds(500))
+                    await send(.dismissSnapshotOverlay)
+                }
 
             case let .closeTab(tab):
                 state.tabs.remove(tab)

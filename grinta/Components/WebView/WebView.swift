@@ -30,7 +30,9 @@ struct WebView: UIViewRepresentable {
         context.coordinator.webView = webView
         webView.navigationDelegate = context.coordinator
 
-        if let url {
+        if let url, let webViewURL = webView.url, url.isEquivalent(to: webViewURL) == false {
+            webView.load(URLRequest(url: url))
+        } else if let url, webView.url == nil {
             webView.load(URLRequest(url: url))
         }
 
@@ -76,10 +78,11 @@ struct WebView: UIViewRepresentable {
 
                     // TODO: Improve the throttling
                     let now = Date()
-                    if now.timeIntervalSince(lastBrandColorPick) > 0.3 {
-                        lastBrandColorPick = now
-                        Task {
-                            await self.pickBrandColors(webView: webView, onlyBottom: true)
+
+                    Task { @MainActor in
+                        if now.timeIntervalSince(self.lastBrandColorPick) > 0.3 {
+                            self.lastBrandColorPick = now
+                            self.pickBrandColors(webView: webView, onlyBottom: true)
                         }
                     }
                 }
@@ -149,9 +152,10 @@ struct WebView: UIViewRepresentable {
                 // take smaller dim??
                 // fix warnings
                 // make only 1 snapshot and pass to colors etc
-                config.rect = CGRect(x: 0, y: 0, width: webView.frame.width, height: webView.frame.width * 1.176)
+                config.rect = CGRect(x: 0, y: 0, width: webView.frame.width, height: webView.frame.height)
+
                 // Snapshot must be taken on the main thread.
-                let (image, error) = await withCheckedContinuation { continuation in
+                let (image, _) = await withCheckedContinuation { continuation in
                     webView.takeSnapshot(with: config) { image, error in
                         continuation.resume(returning: (image, error))
                     }

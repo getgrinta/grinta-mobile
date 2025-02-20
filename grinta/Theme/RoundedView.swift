@@ -61,11 +61,9 @@ struct MagicRoundedView<Embedded: View>: View {
 
 extension View {
     @ViewBuilder
-    func `if`(_ condition: Bool, transform: (Self) -> some View, else elseTransform: ((Self) -> (some View))?) -> some View {
+    func `if`(_ condition: Bool, transform: (Self) -> some View) -> some View {
         if condition {
             transform(self)
-        } else if let elseTransform {
-            elseTransform(self)
         } else {
             self
         }

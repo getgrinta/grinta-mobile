@@ -49,6 +49,7 @@ struct TabPickerView: View {
                                     .padding(.trailing, 4)
                                     .layoutPriority(1)
                                 }
+                                .frame(minHeight: 26)
                                 .padding(.horizontal, 6)
                                 .background(Color.neutral200)
                                 .foregroundStyle(Color.neutral600)
@@ -56,11 +57,14 @@ struct TabPickerView: View {
                                 if let image = tab.snapshot {
                                     image
                                         .resizable()
-                                        .aspectRatio(0.85, contentMode: .fit)
-
+                                        .scaledToFill()
+                                        .frame(maxWidth: .infinity, alignment: .center)
+                                        .frame(height: 215, alignment: .top)
+                                        .clipped()
                                 } else {
                                     Color.neutral100
                                         .aspectRatio(1, contentMode: .fit)
+                                        .frame(height: 215)
                                         .clipped()
                                 }
                             }
@@ -99,7 +103,7 @@ struct BrowserTab: Identifiable, Hashable {
     @Previewable @Namespace var ns
 
     TabPickerView(namespace: ns, onSelectedTab: { _ in }, onCloseTab: { _ in }, tabs: [
-        .init(creationTime: Date(), url: URL(string: "https://www.wp.pl")!, title: "Hello", snapshot: Image(.image1),
+        .init(creationTime: Date(), url: URL(string: "https://www.wp.pl")!, title: "Hello", snapshot: Image(.at),
               faviconURL: URL(string: "https://allegro.pl/favicon.ico")!),
     ], selectedTabId: nil)
 }

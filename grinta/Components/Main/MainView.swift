@@ -28,20 +28,6 @@ struct MainView: View {
                             .background(Color(UIColor(white: 0.2, alpha: 1)))
                     }
 
-                    // Web view image overlay for perfect matched geometry
-                    // TODO: Fade out after 0.5s
-//                            Image(selectedImage)
-//                                .resizable()
-//                                .aspectRatio(contentMode: .fill)
-//                                .frame(height: 300)
-//                                .clipped()
-//                                // Option: tap header to dismiss.
-//                                .onTapGesture {
-//                                    withAnimation(.spring()) {
-//                                        self.selectedImage = nil
-//                                    }
-//                                }
-
                     if let currentTab = store.currentTab {
                         WebView(url: currentTab.url, id: currentTab.id)
                             .onBrandColorChange(region: .top(20)) { color in
@@ -56,13 +42,25 @@ struct MainView: View {
                             .onWebsiteMetadata { metadata in
                                 store.send(.websiteMetadataFetched(currentTab.id, metadata))
                             }
-                            // .background(Color.white)
-                            .matchedGeometryEffect(id: currentTab.id, in: namespace)
-                            .transition(.scale)
-                            .animation(.easeInOut, value: currentTab.id)
+                            .if(store.displaySnapshotOverlay == false) {
+                                $0.matchedGeometryEffect(id: currentTab.id, in: namespace)
+                                    .transition(.scale)
+                                    .animation(.easeInOut, value: currentTab.id)
+                            }
+
+                        // Web view image overlay for smooth matched geometry
+                        // in case the tab was created from storage
+                        // Covers up the initial loading
+                        if let snapshot = store.currentTab?.snapshot, store.displaySnapshotOverlay {
+                            snapshot
+                                .resizable()
+                                .clipped()
+                                .matchedGeometryEffect(id: currentTab.id, in: namespace)
+                                .transition(.scale)
+                                .animation(.easeInOut, value: currentTab.id)
+                        }
                     }
                 }
-
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 // Don't go below bottom safe area inset
                 // which is reserved for the bottom bar
