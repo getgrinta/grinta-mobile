@@ -10,12 +10,13 @@ extension URL {
             return false
         }
 
+        let stripWww: (String?) -> String? = { $0?.replacingOccurrences(of: "www.", with: "") }
+
         let path1 = comp1.path.isEmpty ? "/" : comp1.path
         let path2 = comp2.path.isEmpty ? "/" : comp2.path
 
         return comp1.scheme?.lowercased() == comp2.scheme?.lowercased() &&
-            comp1.host?.lowercased().replacingOccurrences(of: "www.", with: "") ==
-            comp2.host?.lowercased().replacingOccurrences(of: "www.", with: "") &&
+            stripWww(comp1.host?.lowercased()) == stripWww(comp2.host?.lowercased()) &&
             comp1.port == comp2.port &&
             path1 == path2 &&
             comp1.query == comp2.query

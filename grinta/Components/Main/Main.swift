@@ -23,6 +23,7 @@ struct Main {
         case closeTab(BrowserTab) // change to accept ID
         case destination(PresentationAction<Destination.Action>)
         case websiteMetadataFetched(BrowserTab.ID, WebsiteMetadata)
+        case webViewNavigationChanged(BrowserTab.ID, WebViewNavigationPhase)
         case receivedTabSnapshot(id: BrowserTab.ID, Image)
         case brandColorChange(BrandColorRegion, Color, BrowserTab.ID)
         case dismissSnapshotOverlay
@@ -52,6 +53,13 @@ struct Main {
         Reduce { state, action in
             switch action {
             case .binding:
+                return .none
+
+            case let .webViewNavigationChanged(tabId, phase):
+                switch phase {
+                case .started(let url):
+                    state.tabs[id: tabId]?.url = url
+                }
                 return .none
 
             case let .brandColorChange(region, color, tabId):

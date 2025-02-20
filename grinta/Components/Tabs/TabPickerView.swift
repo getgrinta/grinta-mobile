@@ -97,7 +97,7 @@ struct BrowserTab: Identifiable, Hashable {
     var id = UUID()
 
     let creationTime: Date
-    let url: URL
+    var url: URL
     var title: String
     var snapshot: Image?
     var faviconURL: URL?
