@@ -2,23 +2,30 @@ import Foundation
 
 extension URL {
     /// Returns `true` if the receiver is equivalent to the given URL,
-    /// considering scheme, host, port, normalized path (empty path is treated as "/"), and query.
+    /// comparing scheme, host (ignoring "www."), port, normalized path (empty path is treated as "/"),
+    /// and query (empty query "?" is treated the same as no query).
     func isEquivalent(to other: URL) -> Bool {
-        guard let comp1 = URLComponents(url: self, resolvingAgainstBaseURL: false),
-              let comp2 = URLComponents(url: other, resolvingAgainstBaseURL: false)
-        else {
+        guard let components1 = URLComponents(url: self, resolvingAgainstBaseURL: false),
+              let components2 = URLComponents(url: other, resolvingAgainstBaseURL: false) else {
             return false
         }
-
-        let stripWww: (String?) -> String? = { $0?.replacingOccurrences(of: "www.", with: "") }
-
-        let path1 = comp1.path.isEmpty ? "/" : comp1.path
-        let path2 = comp2.path.isEmpty ? "/" : comp2.path
-
-        return comp1.scheme?.lowercased() == comp2.scheme?.lowercased() &&
-            stripWww(comp1.host?.lowercased()) == stripWww(comp2.host?.lowercased()) &&
-            comp1.port == comp2.port &&
-            path1 == path2 &&
-            comp1.query == comp2.query
+        
+        let normalizedPath: (String) -> String = { path in
+            path.isEmpty ? "/" : path
+        }
+        
+        let normalizeHost: (String?) -> String? = { host in
+            host?.lowercased().replacingOccurrences(of: "www.", with: "")
+        }
+        
+        let normalizeQuery: (String?) -> String? = { query in
+            query.flatMap { $0.isEmpty ? nil : $0 }
+        }
+        
+        return components1.scheme?.lowercased() == components2.scheme?.lowercased() &&
+            normalizeHost(components1.host) == normalizeHost(components2.host) &&
+            components1.port == components2.port &&
+            normalizedPath(components1.path) == normalizedPath(components2.path) &&
+            normalizeQuery(components1.query) == normalizeQuery(components2.query)
     }
 }

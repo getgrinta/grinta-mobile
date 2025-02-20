@@ -10,8 +10,6 @@ struct MainView: View {
 
     @Namespace private var namespace
 
-    @State private var dragOffset: CGFloat = 0
-
     var body: some View {
         GeometryReader { proxy in
             VStack(spacing: 0) {
@@ -23,9 +21,9 @@ struct MainView: View {
                 ZStack {
                     if store.currentTab == nil {
                         TabPickerView(namespace: namespace, onSelectedTab: { tab in
-                            store.send(.selectTab(tab), animation: .spring)
+                            store.send(.selectTab(tab.id), animation: .spring)
                         }, onCloseTab: { tab in
-                            store.send(.closeTab(tab))
+                            store.send(.closeTab(tab.id))
                         }, tabs: store.tabs.elements, selectedTabId: store.currentTabId)
                             .background(Color(UIColor(white: 0.2, alpha: 1)))
                     }
@@ -47,26 +45,12 @@ struct MainView: View {
                             .onWebsiteMetadata { metadata in
                                 store.send(.websiteMetadataFetched(currentTab.id, metadata))
                             }
-                            .gesture(
-                                        DragGesture()
-                                            .onChanged { value in
-                                                // Only start tracking if the drag begins near the left edge (e.g. within 20 points)
-                                                if value.startLocation.x < 20 {
-                                                    dragOffset = max(value.translation.width, 0)
-                                                }
-                                            }
-                                            .onEnded { value in
-                                                // For example, if the swipe exceeds 100 points, trigger an action
-                                                if dragOffset > 100 {
-                                                    // Execute your action here (e.g., navigate back or show a menu)
-                                                    print("Left edge swipe triggered!")
-                                                }
-                                                // Reset the offset
-                                                withAnimation {
-                                                    dragOffset = 0
-                                                }
-                                            }
-                                    )
+                            .modifier(EdgeNavigationGesture(
+                                canGoBack: currentTab.canGoBack,
+                                canGoForward: currentTab.canGoForward,
+                                onBack: { store.send(.goBack(currentTab.id)) },
+                                onForward: { store.send(.goForward(currentTab.id)) }
+                            ))
                             .if(store.displaySnapshotOverlay == false || currentTab.wasLoaded) {
                                 $0.matchedGeometryEffect(id: currentTab.id, in: namespace)
                                     .transition(.scale)

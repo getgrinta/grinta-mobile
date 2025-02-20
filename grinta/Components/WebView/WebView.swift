@@ -9,6 +9,7 @@ enum WebViewNavigationPhase {
 struct WebView: UIViewRepresentable {
     let url: URL?
     let id: UUID
+    var onNavigationFinished: ((URL) -> Void)?
 
     enum ColorPickerRegion {
         case top(CGFloat)
@@ -129,6 +130,72 @@ struct WebView: UIViewRepresentable {
             pickBrandColors(webView: webView)
         }
 
+        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            if let url = webView.url {
+                parent.onNavigationFinished?(url)
+            }
+            pickBrandColors(webView: webView)
+
+            Task { @MainActor [snapshotClosure] in
+                try await Task.sleep(for: .milliseconds(500))
+                let config = WKSnapshotConfiguration()
+
+                // take smaller dim??
+                // fix warnings
+                // make only 1 snapshot and pass to colors etc
+                config.rect = CGRect(x: 0, y: 0, width: webView.frame.width, height: webView.frame.height)
+
+                // Snapshot must be taken on the main thread.
+                let (image, _) = await withCheckedContinuation { continuation in
+                    webView.takeSnapshot(with: config) { image, error in
+                        continuation.resume(returning: (image, error))
+                    }
+                }
+
+                if let image {
+                    snapshotClosure?(Image(uiImage: image))
+                }
+            }
+        }
+
+        func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction) async -> WKNavigationActionPolicy {
+            if let url = navigationAction.request.url {
+                // Only handle new page loads, not same-page navigation or anchor changes
+                if navigationAction.navigationType == .linkActivated || 
+                   navigationAction.navigationType == .formSubmitted {
+                    parent.onNavigationFinished?(url)
+                }
+            }
+            return .allow
+        }
+
+        func userContentController(_: WKUserContentController, didReceive message: WKScriptMessage) {
+            switch UserHandler(rawValue: message.name) {
+            case .source:
+                handleSourceUserMessage(message: message)
+            default:
+                print("Unknown user handler called: \(message.name)")
+            }
+        }
+
+        private func handleSourceUserMessage(message: WKScriptMessage) {
+            guard let htmlString = message.body as? String, let host = webView?.url?.host() else { return }
+
+            Task {
+                guard let metadataClosure = websiteMetadataClosure else { return }
+                do {
+                    let metadata = try WebsiteMetadataExtractor().extractMetadata(fromHTML: htmlString, host: host).get()
+                    metadataClosure(metadata)
+                } catch {
+                    print("Failed to decode metadata: \(error)")
+                }
+            }
+        }
+
+        func webView(_: WKWebView, didFail _: WKNavigation!, withError error: Error) {
+            print("WebView failed with error: \(error.localizedDescription)")
+        }
+
         private func pickBrandColors(webView: WKWebView, onlyBottom: Bool = false) {
             for brandColorClosure in brandColorClosures {
                 let webViewRegion: WebViewRegion = switch brandColorClosure.region {
@@ -159,59 +226,6 @@ struct WebView: UIViewRepresentable {
                     }
                 }
             }
-        }
-
-        func webView(_ webView: WKWebView, didFinish _: WKNavigation!) {
-            guard webView == self.webView else { return }
-            pickBrandColors(webView: webView)
-
-            Task { @MainActor [snapshotClosure] in
-                try await Task.sleep(for: .milliseconds(500))
-                let config = WKSnapshotConfiguration()
-
-                // take smaller dim??
-                // fix warnings
-                // make only 1 snapshot and pass to colors etc
-                config.rect = CGRect(x: 0, y: 0, width: webView.frame.width, height: webView.frame.height)
-
-                // Snapshot must be taken on the main thread.
-                let (image, _) = await withCheckedContinuation { continuation in
-                    webView.takeSnapshot(with: config) { image, error in
-                        continuation.resume(returning: (image, error))
-                    }
-                }
-
-                if let image {
-                    snapshotClosure?(Image(uiImage: image))
-                }
-            }
-        }
-
-        func userContentController(_: WKUserContentController, didReceive message: WKScriptMessage) {
-            switch UserHandler(rawValue: message.name) {
-            case .source:
-                handleSourceUserMessage(message: message)
-            default:
-                print("Unknown user handler called: \(message.name)")
-            }
-        }
-
-        private func handleSourceUserMessage(message: WKScriptMessage) {
-            guard let htmlString = message.body as? String, let host = webView?.url?.host() else { return }
-
-            Task {
-                guard let metadataClosure = websiteMetadataClosure else { return }
-                do {
-                    let metadata = try WebsiteMetadataExtractor().extractMetadata(fromHTML: htmlString, host: host).get()
-                    metadataClosure(metadata)
-                } catch {
-                    print("Failed to decode metadata: \(error)")
-                }
-            }
-        }
-
-        func webView(_: WKWebView, didFail _: WKNavigation!, withError error: Error) {
-            print("WebView failed with error: \(error.localizedDescription)")
         }
     }
 }

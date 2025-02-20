@@ -19,14 +19,17 @@ struct Main {
     enum Action: BindableAction {
         case binding(BindingAction<State>)
         case magicSheet(MagicSheet.Action)
-        case selectTab(BrowserTab) // change to accept ID
-        case closeTab(BrowserTab) // change to accept ID
+        case selectTab(BrowserTab.ID) 
+        case closeTab(BrowserTab.ID) 
         case destination(PresentationAction<Destination.Action>)
         case websiteMetadataFetched(BrowserTab.ID, WebsiteMetadata)
         case webViewNavigationChanged(BrowserTab.ID, WebViewNavigationPhase)
         case receivedTabSnapshot(id: BrowserTab.ID, Image)
         case brandColorChange(BrandColorRegion, Color, BrowserTab.ID)
         case dismissSnapshotOverlay
+        case navigationFinished(BrowserTab.ID, URL)
+        case goBack(BrowserTab.ID)
+        case goForward(BrowserTab.ID)
     }
 
     @ObservableState
@@ -79,8 +82,8 @@ struct Main {
                 state.displaySnapshotOverlay = false
                 return .none
 
-            case let .selectTab(tab):
-                state.currentTabId = tab.id
+            case let .selectTab(tabId):
+                state.currentTabId = tabId
                 state.displaySnapshotOverlay = true
 
                 // TODO: Add cancellable. might backfire when
@@ -90,8 +93,8 @@ struct Main {
                     await send(.dismissSnapshotOverlay)
                 }
 
-            case let .closeTab(tab):
-                state.tabs.remove(tab)
+            case let .closeTab(tabId):
+                state.tabs.remove(id: tabId)
                 return .none
 
             case .destination:
@@ -100,7 +103,7 @@ struct Main {
             case let .magicSheet(action):
                 switch action {
                 case let .delegate(.openURL(url)):
-                    let tab = BrowserTab(creationTime: now(), url: url, title: url.absoluteString, snapshot: nil)
+                    let tab = BrowserTab(url: url)
                     state.tabs.append(tab)
                     state.currentTabId = tab.id
                     return .none
@@ -124,6 +127,29 @@ struct Main {
                 return .run { _ in
                     try await websiteMetadataClient.store(item: metadata, hostname: SearchQuery(metadata.host).canonicalHost)
                 }
+
+            case let .navigationFinished(tabId, url):
+                if var currentTab = state.tabs[id: tabId] {
+                    currentTab.url = url
+                    state.tabs[id: tabId] = currentTab
+                }
+                return .none
+
+            case let .goBack(tabId):
+                if var currentTab = state.tabs[id: tabId] {
+                    if currentTab.goBack() {
+                        state.tabs[id: tabId] = currentTab
+                    }
+                }
+                return .none
+
+            case let .goForward(tabId):
+                if var currentTab = state.tabs[id: tabId] {
+                    if currentTab.goForward() {
+                        state.tabs[id: tabId] = currentTab
+                    }
+                }
+                return .none
             }
         }
         .ifLet(\.$destination, action: \.destination)
