@@ -80,11 +80,7 @@ struct Main {
                 return .none
 
             case let .navigationFinished(tabId, url):
-                if var tab = state.tabs[id: tabId] {
-                    print("Navigation finishe for tab id: \(tabId) url: \(url)")
-                    tab.url = url
-                    state.tabs[id: tabId] = tab
-                }
+                state.tabs[id: tabId]?.url = url
                 return .none
 
             case let .selectTab(tabId):

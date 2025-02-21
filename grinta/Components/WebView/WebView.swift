@@ -28,7 +28,7 @@ struct WebView: UIViewRepresentable {
 
     func makeCoordinator() -> Coordinator {
         Coordinator(
-            self,
+            //  self,
             brandColorClosures: brandColorClosures,
             websiteMetadataClosure: websiteMetadataClosure,
             snapshotClosure: snapshotClosure,
@@ -40,6 +40,7 @@ struct WebView: UIViewRepresentable {
         let webView = WebViewHolder.shared.webView(for: id, messageHandler: context.coordinator)
         context.coordinator.lastUILoadedURL = url
         context.coordinator.webView = webView
+        print("LE MAKEUIVIEW")
         webView.navigationDelegate = context.coordinator
 
         // TODO: Redo this logic - we need to store last url for a _tab_, not the WebView...
@@ -56,6 +57,7 @@ struct WebView: UIViewRepresentable {
         guard let url else { return }
 
         webView.navigationDelegate = context.coordinator
+        print("LE UPDATEUIVIEW")
 
         let shouldLoad = context.coordinator.lastUILoadedURL.map { !url.isEquivalent(to: $0) } ?? true
         if shouldLoad {
@@ -75,7 +77,6 @@ struct WebView: UIViewRepresentable {
     }
 
     final class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
-        let parent: WebView
         var brandColorClosures: [(region: ColorPickerRegion, closure: @Sendable @MainActor (Color) -> Void)]
         var websiteMetadataClosure: (@Sendable @MainActor (WebsiteMetadata) -> Void)?
         var snapshotClosure: (@Sendable @MainActor (Image) -> Void)?
@@ -110,13 +111,12 @@ struct WebView: UIViewRepresentable {
         }
 
         init(
-            _ parent: WebView,
             brandColorClosures: [(region: ColorPickerRegion, closure: @Sendable @MainActor (Color) -> Void)],
             websiteMetadataClosure: (@Sendable @MainActor (WebsiteMetadata) -> Void)?,
             snapshotClosure: (@Sendable @MainActor (Image) -> Void)?,
             navigationClosure: (@Sendable @MainActor (WebViewNavigationPhase) -> Void)?
+            // navigationFinishedClosure: (@Sendable @MainActor (WebViewNavigationPhase) -> Void)?
         ) {
-            self.parent = parent
             self.brandColorClosures = brandColorClosures
             self.websiteMetadataClosure = websiteMetadataClosure
             self.snapshotClosure = snapshotClosure
@@ -137,7 +137,7 @@ struct WebView: UIViewRepresentable {
 
         func webView(_ webView: WKWebView, didFinish _: WKNavigation!) {
             if let url = webView.url {
-                parent.onNavigationFinished?(url)
+                // navigationFinishedClosure?(url)
             }
             pickBrandColors(webView: webView)
 
@@ -169,7 +169,7 @@ struct WebView: UIViewRepresentable {
                 if navigationAction.navigationType == .linkActivated ||
                     navigationAction.navigationType == .formSubmitted
                 {
-                    parent.onNavigationFinished?(url)
+                    navigationClosure?(.started(url))
                 }
             }
             return .allow
@@ -257,6 +257,7 @@ extension WebView {
 
     func onNavigation(closure: @escaping @Sendable @MainActor (WebViewNavigationPhase) -> Void) -> Self {
         var copy = self
+        print("ON NAVIGATION")
         copy.navigationClosure = closure
         return copy
     }

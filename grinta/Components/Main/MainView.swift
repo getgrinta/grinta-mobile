@@ -49,13 +49,15 @@ struct MainView: View {
                                     store.send(.brandColorChange(.bottom, color, currentTab.id), animation: .easeInOut)
                                 }
                                 .onNavigation { phase in
+                                    print("==== Navigation changed for tab \(currentTab.id)")
                                     store.send(.webViewNavigationChanged(currentTab.id, phase))
                                 }
                                 .onSnapshot { image in
-                                    print("on snapshot for tab id \(currentTab.id)")
+                                    // print("on snapshot for tab id \(currentTab.id)")
                                     store.send(.receivedTabSnapshot(id: currentTab.id, image))
                                 }
                                 .onNavigationFinished { url in
+                                    print("==== Navigation finished for tab \(currentTab.id)")
                                     store.send(.navigationFinished(currentTab.id, url))
                                 }
                                 .onWebsiteMetadata { metadata in
