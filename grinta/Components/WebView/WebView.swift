@@ -123,7 +123,7 @@ struct WebView: UIViewRepresentable {
             self.navigationClosure = navigationClosure
         }
 
-        func webView(_ webView: WKWebView, didStartProvisionalNavigation nav: WKNavigation!) {
+        func webView(_ webView: WKWebView, didStartProvisionalNavigation _: WKNavigation!) {
             if let url = webView.url {
                 navigationClosure?(.started(url))
             }
@@ -135,7 +135,7 @@ struct WebView: UIViewRepresentable {
             pickBrandColors(webView: webView)
         }
 
-        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        func webView(_ webView: WKWebView, didFinish _: WKNavigation!) {
             if let url = webView.url {
                 parent.onNavigationFinished?(url)
             }
@@ -163,11 +163,12 @@ struct WebView: UIViewRepresentable {
             }
         }
 
-        func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction) async -> WKNavigationActionPolicy {
+        func webView(_: WKWebView, decidePolicyFor navigationAction: WKNavigationAction) async -> WKNavigationActionPolicy {
             if let url = navigationAction.request.url {
                 // Only handle new page loads, not same-page navigation or anchor changes
-                if navigationAction.navigationType == .linkActivated || 
-                   navigationAction.navigationType == .formSubmitted {
+                if navigationAction.navigationType == .linkActivated ||
+                    navigationAction.navigationType == .formSubmitted
+                {
                     parent.onNavigationFinished?(url)
                 }
             }

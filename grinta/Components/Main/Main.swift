@@ -19,8 +19,8 @@ struct Main {
     enum Action: BindableAction {
         case binding(BindingAction<State>)
         case magicSheet(MagicSheet.Action)
-        case selectTab(BrowserTab.ID) 
-        case closeTab(BrowserTab.ID) 
+        case selectTab(BrowserTab.ID)
+        case closeTab(BrowserTab.ID)
         case destination(PresentationAction<Destination.Action>)
         case websiteMetadataFetched(BrowserTab.ID, WebsiteMetadata)
         case webViewNavigationChanged(BrowserTab.ID, WebViewNavigationPhase)
@@ -61,7 +61,7 @@ struct Main {
 
             case let .webViewNavigationChanged(tabId, phase):
                 switch phase {
-                case .started(let url):
+                case let .started(url):
                     state.tabs[id: tabId]?.url = url
                 }
                 return .none
@@ -78,7 +78,7 @@ struct Main {
             case let .receivedTabSnapshot(id, image):
                 state.tabs[id: id]?.updateCurrentSnapshot(image)
                 return .none
-                
+
             case let .navigationFinished(tabId, url):
                 if var tab = state.tabs[id: tabId] {
                     print("Navigation finishe for tab id: \(tabId) url: \(url)")

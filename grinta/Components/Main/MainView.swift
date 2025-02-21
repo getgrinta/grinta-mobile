@@ -31,15 +31,16 @@ struct MainView: View {
                     if let currentTab = store.currentTab {
                         ZStack {
                             // Show previous snapshot while dragging back
-                            if isDraggingBack && currentTab.canGoBack,
-                               let previousSnapshot = currentTab.previousSnapshot {
+                            if isDraggingBack, currentTab.canGoBack,
+                               let previousSnapshot = currentTab.previousSnapshot
+                            {
                                 previousSnapshot
                                     .resizable()
                                     .scaledToFill()
                                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                                     .clipped()
                             }
-                            
+
                             WebView(url: currentTab.url, id: currentTab.id)
                                 .onBrandColorChange(region: .top(20)) { color in
                                     store.send(.brandColorChange(.top, color, currentTab.id), animation: .easeInOut)
