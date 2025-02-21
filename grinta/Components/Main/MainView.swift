@@ -7,7 +7,7 @@ struct MainView: View {
 
     @State private var showSheet = true
     @State private var settingsPresented = false
-
+    @State private var isDraggingBack = false
     @Namespace private var namespace
 
     var body: some View {
@@ -29,44 +29,61 @@ struct MainView: View {
                     }
 
                     if let currentTab = store.currentTab {
-                        WebView(url: currentTab.url, id: currentTab.id)
-                            .onBrandColorChange(region: .top(20)) { color in
-                                store.send(.brandColorChange(.top, color, currentTab.id), animation: .easeInOut)
+                        ZStack {
+                            // Show previous snapshot while dragging back
+                            if isDraggingBack && currentTab.canGoBack,
+                               let previousSnapshot = currentTab.previousSnapshot {
+                                previousSnapshot
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                    .clipped()
                             }
-                            .onBrandColorChange(region: .bottom(20)) { color in
-                                store.send(.brandColorChange(.bottom, color, currentTab.id), animation: .easeInOut)
-                            }
-                            .onSnapshot { image in
-                                store.send(.receivedTabSnapshot(id: currentTab.id, image))
-                            }
-                            .onNavigation { phase in
-                                store.send(.webViewNavigationChanged(currentTab.id, phase))
-                            }
-                            .onWebsiteMetadata { metadata in
-                                store.send(.websiteMetadataFetched(currentTab.id, metadata))
-                            }
-                            .modifier(EdgeNavigationGesture(
-                                canGoBack: currentTab.canGoBack,
-                                canGoForward: currentTab.canGoForward,
-                                onBack: { store.send(.goBack(currentTab.id)) },
-                                onForward: { store.send(.goForward(currentTab.id)) }
-                            ))
-                            .if(store.displaySnapshotOverlay == false || currentTab.wasLoaded) {
-                                $0.matchedGeometryEffect(id: currentTab.id, in: namespace)
+                            
+                            WebView(url: currentTab.url, id: currentTab.id)
+                                .onBrandColorChange(region: .top(20)) { color in
+                                    store.send(.brandColorChange(.top, color, currentTab.id), animation: .easeInOut)
+                                }
+                                .onBrandColorChange(region: .bottom(20)) { color in
+                                    store.send(.brandColorChange(.bottom, color, currentTab.id), animation: .easeInOut)
+                                }
+                                .onNavigation { phase in
+                                    store.send(.webViewNavigationChanged(currentTab.id, phase))
+                                }
+                                .onSnapshot { image in
+                                    print("on snapshot for tab id \(currentTab.id)")
+                                    store.send(.receivedTabSnapshot(id: currentTab.id, image))
+                                }
+                                .onNavigationFinished { url in
+                                    store.send(.navigationFinished(currentTab.id, url))
+                                }
+                                .onWebsiteMetadata { metadata in
+                                    store.send(.websiteMetadataFetched(currentTab.id, metadata))
+                                }
+                                .modifier(EdgeNavigationGesture(
+                                    canGoBack: currentTab.canGoBack,
+                                    canGoForward: currentTab.canGoForward,
+                                    onBack: { store.send(.goBack(currentTab.id)) },
+                                    onForward: { store.send(.goForward(currentTab.id)) },
+                                    isDraggingBack: $isDraggingBack
+                                ))
+                                .if(store.displaySnapshotOverlay == false || currentTab.wasLoaded) {
+                                    $0.matchedGeometryEffect(id: currentTab.id, in: namespace)
+                                        .transition(.scale)
+                                        .animation(.easeInOut, value: currentTab.id)
+                                }
+
+                            // Web view image overlay for smooth matched geometry
+                            // in case the tab was created from storage
+                            // Covers up the initial loading
+                            if let snapshot = store.currentTab?.previousSnapshot, store.displaySnapshotOverlay, currentTab.wasLoaded == false {
+                                snapshot
+                                    .resizable()
+                                    .clipped()
+                                    .matchedGeometryEffect(id: currentTab.id, in: namespace)
                                     .transition(.scale)
                                     .animation(.easeInOut, value: currentTab.id)
                             }
-
-                        // Web view image overlay for smooth matched geometry
-                        // in case the tab was created from storage
-                        // Covers up the initial loading
-                        if let snapshot = store.currentTab?.snapshot, store.displaySnapshotOverlay, currentTab.wasLoaded == false {
-                            snapshot
-                                .resizable()
-                                .clipped()
-                                .matchedGeometryEffect(id: currentTab.id, in: namespace)
-                                .transition(.scale)
-                                .animation(.easeInOut, value: currentTab.id)
                         }
                     }
                 }
@@ -76,11 +93,9 @@ struct MainView: View {
                 .containerRelativeFrame(.vertical, alignment: .top) { length, _ in
                     length - proxy.safeAreaInsets.bottom
                 }
-                // .animation(nil, value: store.currentTab)
 
                 BottomBarBackgroundView(color: store.currentTab?.bottomBrandColor ?? .neutral400)
             }
-            // .animation(nil, value: store.currentTab)
             .sheet(isPresented: $showSheet) {
                 MagicSheetView(store: store.scope(state: \.magicSheet, action: \.magicSheet))
                     .sheet(item: $store.scope(state: \.destination?.settings, action: \.destination.settings)) { store in

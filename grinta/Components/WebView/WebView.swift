@@ -67,14 +67,19 @@ struct WebView: UIViewRepresentable {
             context.coordinator.lastUILoadedURL = url
             context.coordinator.webView = webView
         }
+
+        context.coordinator.navigationClosure = navigationClosure
+        context.coordinator.snapshotClosure = snapshotClosure
+        context.coordinator.websiteMetadataClosure = websiteMetadataClosure
+        context.coordinator.brandColorClosures = brandColorClosures
     }
 
     final class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
         let parent: WebView
-        let brandColorClosures: [(region: ColorPickerRegion, closure: @Sendable @MainActor (Color) -> Void)]
-        let websiteMetadataClosure: (@Sendable @MainActor (WebsiteMetadata) -> Void)?
-        let snapshotClosure: (@Sendable @MainActor (Image) -> Void)?
-        let navigationClosure: (@Sendable @MainActor (WebViewNavigationPhase) -> Void)?
+        var brandColorClosures: [(region: ColorPickerRegion, closure: @Sendable @MainActor (Color) -> Void)]
+        var websiteMetadataClosure: (@Sendable @MainActor (WebsiteMetadata) -> Void)?
+        var snapshotClosure: (@Sendable @MainActor (Image) -> Void)?
+        var navigationClosure: (@Sendable @MainActor (WebViewNavigationPhase) -> Void)?
 
         var lastUILoadedURL: URL?
         var token: NSKeyValueObservation?
@@ -252,6 +257,12 @@ extension WebView {
     func onNavigation(closure: @escaping @Sendable @MainActor (WebViewNavigationPhase) -> Void) -> Self {
         var copy = self
         copy.navigationClosure = closure
+        return copy
+    }
+
+    func onNavigationFinished(closure: @escaping @Sendable @MainActor (URL) -> Void) -> Self {
+        var copy = self
+        copy.onNavigationFinished = closure
         return copy
     }
 }

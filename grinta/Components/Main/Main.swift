@@ -30,6 +30,7 @@ struct Main {
         case navigationFinished(BrowserTab.ID, URL)
         case goBack(BrowserTab.ID)
         case goForward(BrowserTab.ID)
+        case updateSnapshot(BrowserTab.ID, Image)
     }
 
     @ObservableState
@@ -75,11 +76,15 @@ struct Main {
                 return .none
 
             case let .receivedTabSnapshot(id, image):
-                state.tabs[id: id]?.snapshot = image
+                state.tabs[id: id]?.updateCurrentSnapshot(image)
                 return .none
-
-            case .dismissSnapshotOverlay:
-                state.displaySnapshotOverlay = false
+                
+            case let .navigationFinished(tabId, url):
+                if var tab = state.tabs[id: tabId] {
+                    print("Navigation finishe for tab id: \(tabId) url: \(url)")
+                    tab.url = url
+                    state.tabs[id: tabId] = tab
+                }
                 return .none
 
             case let .selectTab(tabId):
@@ -103,7 +108,7 @@ struct Main {
             case let .magicSheet(action):
                 switch action {
                 case let .delegate(.openURL(url)):
-                    let tab = BrowserTab(url: url)
+                    let tab = BrowserTab(id: UUID(), url: url)
                     state.tabs.append(tab)
                     state.currentTabId = tab.id
                     return .none
@@ -128,27 +133,20 @@ struct Main {
                     try await websiteMetadataClient.store(item: metadata, hostname: SearchQuery(metadata.host).canonicalHost)
                 }
 
-            case let .navigationFinished(tabId, url):
-                if var currentTab = state.tabs[id: tabId] {
-                    currentTab.url = url
-                    state.tabs[id: tabId] = currentTab
-                }
-                return .none
-
             case let .goBack(tabId):
-                if var currentTab = state.tabs[id: tabId] {
-                    if currentTab.goBack() {
-                        state.tabs[id: tabId] = currentTab
-                    }
-                }
+                state.tabs[id: tabId]?.goBack()
                 return .none
 
             case let .goForward(tabId):
-                if var currentTab = state.tabs[id: tabId] {
-                    if currentTab.goForward() {
-                        state.tabs[id: tabId] = currentTab
-                    }
-                }
+                state.tabs[id: tabId]?.goForward()
+                return .none
+
+            case let .updateSnapshot(tabId, image):
+                state.tabs[id: tabId]?.updateCurrentSnapshot(image)
+                return .none
+
+            case .dismissSnapshotOverlay:
+                state.displaySnapshotOverlay = false
                 return .none
             }
         }

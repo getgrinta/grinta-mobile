@@ -7,7 +7,7 @@ struct EdgeNavigationGesture: ViewModifier {
     let onForward: () -> Void
     
     @GestureState private var dragOffset: CGFloat = 0
-    @State private var previousOffset: CGFloat = 0
+    @Binding var isDraggingBack: Bool
     
     func body(content: Content) -> some View {
         content
@@ -23,13 +23,22 @@ struct EdgeNavigationGesture: ViewModifier {
                         if value.startLocation.x < edgeWidth && canGoBack {
                             // Left edge gesture (go back)
                             state = max(0, horizontalTranslation)
+                            withAnimation(.easeOut(duration: 0.2)) {
+                                isDraggingBack = true
+                            }
                         } else if value.startLocation.x > screenWidth - edgeWidth && canGoForward {
                             // Right edge gesture (go forward)
                             state = min(0, horizontalTranslation)
+                            withAnimation(.easeOut(duration: 0.2)) {
+                                isDraggingBack = false
+                            }
                         }
                     }
                     .onEnded { value in
                         let threshold: CGFloat = 50 // Minimum drag distance to trigger navigation
+                        withAnimation(.easeOut(duration: 0.2)) {
+                            isDraggingBack = false
+                        }
                         
                         if value.startLocation.x < 44 && value.translation.width > threshold && canGoBack {
                             onBack()
@@ -40,6 +49,6 @@ struct EdgeNavigationGesture: ViewModifier {
                     }
             )
             .offset(x: dragOffset)
-            .animation(.interactiveSpring(), value: dragOffset)
+            .animation(.interactiveSpring(response: 0.3, dampingFraction: 0.8, blendDuration: 0), value: dragOffset)
     }
 }
