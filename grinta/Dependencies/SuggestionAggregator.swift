@@ -109,17 +109,8 @@ private enum SuggestionComposer {
             // display single item + (3 - no. of search suggestions - additional ones)
             .prefix(1 + max(0, 2 - suggestions.count))
 
-        for historySuggestion in historySuggestions {
-            if !suggestions.contains(historySuggestion) {
-                suggestions.append(historySuggestion)
-            }
-        }
-
-        for remoteSuggestion in remote {
-            if !suggestions.contains(remoteSuggestion) {
-                suggestions.append(remoteSuggestion)
-            }
-        }
+        suggestions.append(contentsOf: historySuggestions)
+        suggestions.append(contentsOf: remote)
 
         return suggestions.elements
     }

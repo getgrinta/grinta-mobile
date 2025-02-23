@@ -55,9 +55,6 @@ struct MainView: View {
                                 .onWebsiteMetadata { metadata in
                                     store.send(.websiteMetadataFetched(currentTab.id, metadata))
                                 }
-                                .onServerRedirect { url in
-                                    store.send(.serverRedirect(currentTab.id, url))
-                                }
                                 .if(store.displaySnapshotOverlay == false || currentTab.wasLoaded) {
                                     $0.matchedGeometryEffect(id: currentTab.id, in: namespace)
                                         .transition(.scale)
@@ -66,9 +63,7 @@ struct MainView: View {
                                 .background(currentTab.topBrandColor)
                                 .modifier(EdgeNavigationGesture(
                                     canGoBack: currentTab.hasPreviousHistory == false,
-                                    canGoForward: false,
                                     onBack: { store.send(.showTabsTapped) },
-                                    onForward: { store.send(.goForward(currentTab.id)) },
                                     isDraggingBack: $isDraggingBack
                                 ).dragCompletionChanged { completion in
                                     withAnimation(.easeInOut(duration: 0.5)) {

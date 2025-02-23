@@ -3,9 +3,7 @@ import SwiftUI
 struct EdgeNavigationGesture: ViewModifier {
     private var dragCompletionClosure: ((CGFloat) -> Void)?
     let canGoBack: Bool
-    let canGoForward: Bool
     let onBack: () -> Void
-    let onForward: () -> Void
 
     @GestureState private var dragOffset: CGFloat = 0
     @Binding var isDraggingBack: Bool
@@ -16,15 +14,11 @@ struct EdgeNavigationGesture: ViewModifier {
 
     init(
         canGoBack: Bool,
-        canGoForward: Bool,
         onBack: @escaping () -> Void,
-        onForward: @escaping () -> Void,
         isDraggingBack: Binding<Bool>
     ) {
         self.canGoBack = canGoBack
-        self.canGoForward = canGoForward
         self.onBack = onBack
-        self.onForward = onForward
         _isDraggingBack = isDraggingBack
     }
 
@@ -34,9 +28,6 @@ struct EdgeNavigationGesture: ViewModifier {
                 DragGesture()
                     .updating($dragOffset) { value, state, _ in
                         let horizontalTranslation = value.translation.width
-
-                        // Only allow gestures from edges
-                        let screenWidth = UIScreen.main.bounds.width
                         let edgeWidth: CGFloat = 44 // Width of the edge detection area
 
                         if value.startLocation.x < edgeWidth, canGoBack {
@@ -44,12 +35,6 @@ struct EdgeNavigationGesture: ViewModifier {
                             state = max(0, horizontalTranslation)
                             withAnimation(.easeOut(duration: 0.2)) {
                                 isDraggingBack = true
-                            }
-                        } else if value.startLocation.x > screenWidth - edgeWidth, canGoForward {
-                            // Right edge gesture (go forward)
-                            state = min(0, horizontalTranslation)
-                            withAnimation(.easeOut(duration: 0.2)) {
-                                isDraggingBack = false
                             }
                         }
 
@@ -64,10 +49,6 @@ struct EdgeNavigationGesture: ViewModifier {
                         if value.startLocation.x < 44, value.translation.width > threshold, canGoBack {
                             dragCompletionClosure?(1)
                             onBack()
-                        } else if value.startLocation.x > UIScreen.main.bounds.width - 44,
-                                  value.translation.width < -threshold, canGoForward
-                        {
-                            onForward()
                         } else {
                             dragCompletionClosure?(0)
                         }
