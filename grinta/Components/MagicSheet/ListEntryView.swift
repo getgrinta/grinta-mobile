@@ -12,7 +12,7 @@ struct ListEntryView: View {
                         .resizable()
                         .aspectRatio(contentMode: .fit)
                         .layoutPriority(0)
-                        .frame(width: 28)
+                        .frame(width: 26)
 
                 }, placeholder: {
                     Image(suggestion.image ?? .globe)
@@ -23,7 +23,7 @@ struct ListEntryView: View {
                     .foregroundStyle(.neutral400)
                     .tint(Color.white)
                     .aspectRatio(contentMode: .fit)
-                    .frame(width: 28)
+                    .frame(width: 22)
                     .layoutPriority(0)
                     .font(.body)
             }

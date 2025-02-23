@@ -25,12 +25,9 @@ struct Main {
         case websiteMetadataFetched(BrowserTab.ID, WebsiteMetadata)
         case webViewNavigationChanged(BrowserTab.ID, WebViewNavigationPhase)
         case receivedTabSnapshot(id: BrowserTab.ID, Image, URL)
-        case serverRedirect(BrowserTab.ID, URL)
         case brandColorChange(BrandColorRegion, Color, BrowserTab.ID)
         case dismissSnapshotOverlay
         case navigationFinished(BrowserTab.ID, URL)
-        case goBack(BrowserTab.ID)
-        case goForward(BrowserTab.ID)
         case showTabsTapped
         case updateSnapshot(BrowserTab.ID, Image, URL)
     }
@@ -75,10 +72,6 @@ struct Main {
 
             case .showTabsTapped:
                 state.currentTabId = nil
-                return .none
-
-            case let .serverRedirect(tabId, url):
-                print("Server redirect to \(url)")
                 return .none
 
             case let .brandColorChange(region, color, tabId):
@@ -144,14 +137,6 @@ struct Main {
                 return .run { _ in
                     try await websiteMetadataClient.store(item: metadata, hostname: SearchQuery(metadata.host).canonicalHost)
                 }
-
-            case let .goBack(tabId):
-                // state.tabs[id: tabId]?.goBack()
-                return .none
-
-            case let .goForward(tabId):
-                // state.tabs[id: tabId]?.goForward()
-                return .none
 
             case let .updateSnapshot(tabId, image, url):
                 state.tabs[id: tabId]?.updateSnapshot(image, forURL: url)

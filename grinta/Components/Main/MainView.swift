@@ -7,7 +7,7 @@ struct MainView: View {
 
     @State private var isDraggingBack = false
     @Namespace private var namespace
-    @State var dragCompletion: CGFloat = 0
+    @State var dragCompletion: CGFloat = 1
 
     var body: some View {
         GeometryReader { proxy in

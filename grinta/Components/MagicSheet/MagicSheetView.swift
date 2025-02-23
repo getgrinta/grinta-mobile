@@ -162,7 +162,7 @@ struct MagicSheetView: View {
 
                 ScrollView {
                     ForEach(store.searchSuggestions) { suggestion in
-                        HStack {
+                        HStack(spacing: 0) {
                             Button {
                                 store.send(.performSuggestion(suggestion))
                             } label: {
@@ -180,13 +180,14 @@ struct MagicSheetView: View {
                                         .foregroundStyle(.theme)
                                         .tint(.theme)
                                         .aspectRatio(contentMode: .fit)
-                                        .frame(width: 16)
+                                        .frame(width: 12)
                                         .font(.callout)
-                                        .padding()
+                                        .padding(.vertical, 12)
+                                        .padding(.leading, 12)
                                 }
                             }
                         }
-                        .padding(.horizontal, 24)
+                        .padding(.horizontal, 20)
                     }
                 }
                 .opacity(store.isRecognizingVoice ? 0 : 1)

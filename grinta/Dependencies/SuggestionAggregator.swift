@@ -70,7 +70,7 @@ private enum SuggestionComposer {
         query: SearchQuery,
         metadata: [String: WebsiteMetadata]
     ) -> [SearchSuggestion] {
-        var suggestions: [SearchSuggestion] = []
+        var suggestions: IdentifiedArrayOf<SearchSuggestion> = []
 
         if query.isEmpty == false {
             suggestions = [
@@ -90,6 +90,7 @@ private enum SuggestionComposer {
         searchHistoryMatcher.buildTrie(from: history)
 
         let matchingHistoryItems = searchHistoryMatcher.search(query: query.raw, limit: 10)
+
         let historySuggestions = matchingHistoryItems
             .map {
                 // Clean this up...
@@ -108,7 +109,19 @@ private enum SuggestionComposer {
             // display single item + (3 - no. of search suggestions - additional ones)
             .prefix(1 + max(0, 2 - suggestions.count))
 
-        return suggestions + historySuggestions + remote
+        for historySuggestion in historySuggestions {
+            if !suggestions.contains(historySuggestion) {
+                suggestions.append(historySuggestion)
+            }
+        }
+
+        for remoteSuggestion in remote {
+            if !suggestions.contains(remoteSuggestion) {
+                suggestions.append(remoteSuggestion)
+            }
+        }
+
+        return suggestions.elements
     }
 }
 
