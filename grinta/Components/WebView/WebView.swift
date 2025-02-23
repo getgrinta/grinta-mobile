@@ -39,7 +39,7 @@ struct WebView: UIViewRepresentable {
     }
 
     func makeUIView(context: Context) -> WKWebView {
-        let webView = WebViewHolder.shared.webView(for: id, messageHandler: context.coordinator)
+        let webView = WebViewHolder.shared.webView(for: id, messageHandler: context.coordinator, coordinator: context.coordinator)
         context.coordinator.lastUILoadedURL = url
         context.coordinator.navigationClosure = navigationClosure
         context.coordinator.snapshotClosure = snapshotClosure
@@ -159,6 +159,10 @@ struct WebView: UIViewRepresentable {
             urlObserver?.invalidate()
         }
 
+        @objc func handleRefresh(_ refreshControl: UIRefreshControl) {
+            webView?.reload()
+        }
+
         func webView(_ webView: WKWebView, didStartProvisionalNavigation _: WKNavigation!) {
             if let url = webView.url {
                 navigationClosure?(.started(url))
@@ -191,6 +195,8 @@ struct WebView: UIViewRepresentable {
         }
 
         func webView(_ webView: WKWebView, didFinish _: WKNavigation!) {
+            webView.scrollView.refreshControl?.endRefreshing()
+
             if let url = webView.url {
                 // Update last URL and notify about navigation
                 lastUILoadedURL = url
@@ -275,7 +281,7 @@ struct WebView: UIViewRepresentable {
                     case let .success(color):
                         // Set the scroll view's background color to top "brand" color
                         if case WebViewRegion.top = webViewRegion {
-                            webView.scrollView.backgroundColor = color
+                            webView.underPageBackgroundColor = color
                         }
                         brandColorClosure.closure(Color(color))
                     case let .failure(failure):

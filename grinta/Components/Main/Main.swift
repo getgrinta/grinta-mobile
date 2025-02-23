@@ -51,6 +51,7 @@ struct Main {
 
     @Dependency(LLMClient.self) var llmClient
     @Dependency(WebsiteMetadataStoreClient.self) var websiteMetadataClient
+    @Dependency(HistoryArchiveClient.self) var historyArchive
     @Dependency(\.date) var now
 
     var body: some ReducerOf<Self> {
@@ -65,10 +66,16 @@ struct Main {
                 case let .started(url):
                     state.tabs[id: tabId]?.url = url
                 case let .urlChanged(url, hasPreviousHistory: hasPreviousHistory):
+                    print("Navigation url changed hasPreviousHistory: \(hasPreviousHistory)")
                     state.tabs[id: tabId]?.url = url
                     state.tabs[id: tabId]?.hasPreviousHistory = hasPreviousHistory
                 }
-                return .none
+                return .run { _ in
+                    switch phase {
+                    case let .started(url), let .urlChanged(url, hasPreviousHistory: _):
+                        try await historyArchive.store(item: HistoryItem(query: SearchQuery(url.absoluteString), type: .website))
+                    }
+                }
 
             case .showTabsTapped:
                 state.currentTabId = nil

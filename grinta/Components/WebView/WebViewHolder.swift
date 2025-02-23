@@ -6,7 +6,7 @@ final class WebViewHolder: ObservableObject {
     static let shared = WebViewHolder()
     private var webViews: [BrowserTab.ID: WKWebView] = [:]
 
-    func webView(for tabId: BrowserTab.ID, messageHandler: any WKScriptMessageHandler) -> WKWebView {
+    func webView(for tabId: BrowserTab.ID, messageHandler: any WKScriptMessageHandler, coordinator: WebView.Coordinator) -> WKWebView {
         if let view = webViews[tabId] {
             return view
         }
@@ -31,6 +31,12 @@ final class WebViewHolder: ObservableObject {
         webView.allowsBackForwardNavigationGestures = true
         webView.allowsLinkPreview = true
         // webView.customUserAgent = "Grinta/0.1.0"
+
+        // Set up the refresh control.
+         let refreshControl = UIRefreshControl()
+        refreshControl.addTarget(coordinator, action: #selector(WebView.Coordinator.handleRefresh(_:)), for: .valueChanged)
+         webView.scrollView.refreshControl = refreshControl
+         
 
         webViews[tabId] = webView
         return webView
