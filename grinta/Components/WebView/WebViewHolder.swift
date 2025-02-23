@@ -11,11 +11,8 @@ final class WebViewHolder: ObservableObject {
             return view
         }
 
-        print("Creating new webview for tab: \(tabId)")
-
         let configuration = WKWebViewConfiguration()
         configuration.allowsInlineMediaPlayback = false
-        configuration.preferences.javaScriptCanOpenWindowsAutomatically = false
         configuration.mediaTypesRequiringUserActionForPlayback = .all
 
         let sourceScript = WKUserScript(
@@ -33,7 +30,7 @@ final class WebViewHolder: ObservableObject {
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.allowsBackForwardNavigationGestures = true
         webView.allowsLinkPreview = true
-        webView.customUserAgent = "Grinta/0.1.0"
+        // webView.customUserAgent = "Grinta/0.1.0"
 
         webViews[tabId] = webView
         return webView
@@ -52,7 +49,7 @@ final class WebViewHolder: ObservableObject {
                     }
                 });
                 observer.observe(document, { subtree: true, childList: true });
-                
+
                 // Listen for popstate events (back/forward)
                 window.addEventListener('popstate', () => {
                     window.webkit.messageHandlers.urlChanged.postMessage(window.location.href);

@@ -1,10 +1,8 @@
 import Foundation
 
 extension URL {
-
     var normalized: URL? {
         guard var components = URLComponents(string: absoluteString) else { return nil }
-
 
         let normalizedPath: (String) -> String = { path in
             path.isEmpty ? "/" : path

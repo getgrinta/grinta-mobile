@@ -4,15 +4,18 @@ import SwiftUI
 struct TabPickerView: View {
     private var onSelectedTab: ((BrowserTab.ID) -> Void)?
     private var onCloseTab: ((BrowserTab.ID) -> Void)?
+    var contentOpacity: CGFloat = 1
 
     let namespace: Namespace.ID
     let tabs: [BrowserTab]
+    let applyMatchedGeometry: Bool
 
-    init(namespace: Namespace.ID, tabs: [BrowserTab]) {
+    init(namespace: Namespace.ID, tabs: [BrowserTab], applyMatchedGeometry: Bool) {
         self.namespace = namespace
         self.tabs = tabs
+        self.applyMatchedGeometry = applyMatchedGeometry
     }
-    
+
     var body: some View {
         if tabs.isEmpty == false {
             ScrollView {
@@ -35,7 +38,10 @@ struct TabPickerView: View {
                                 }
                                 .clipShape(RoundedRectangle(cornerRadius: 12))
                             }
-                            .matchedGeometryEffect(id: tab.id, in: namespace)
+                            .opacity(contentOpacity)
+                            .if(applyMatchedGeometry) {
+                                $0.matchedGeometryEffect(id: tab.id, in: namespace)
+                            }
                         }
                     }
                     .padding()
@@ -51,7 +57,7 @@ struct TabPickerView: View {
 
     @ViewBuilder
     private func TabContent(tab: BrowserTab, width: CGFloat) -> some View {
-        if let image = tab.history.last?.snapshot {
+        if let image = tab.currentSnapshot {
             image
                 .resizable()
                 .scaledToFill()
@@ -118,6 +124,12 @@ extension TabPickerView {
         copy.onCloseTab = closure
         return copy
     }
+
+    func contentOpacity(_ opacity: CGFloat) -> Self {
+        var copy = self
+        copy.contentOpacity = opacity
+        return copy
+    }
 }
 
 #Preview("Default") {
@@ -125,5 +137,5 @@ extension TabPickerView {
 
     TabPickerView(namespace: ns, tabs: [
         .init(id: UUID(), url: URL(string: "https://www.wp.pl")!),
-    ])
+    ], applyMatchedGeometry: true)
 }

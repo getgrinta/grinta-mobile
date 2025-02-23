@@ -7,6 +7,7 @@ struct MainView: View {
 
     @State private var isDraggingBack = false
     @Namespace private var namespace
+    @State var dragCompletion: CGFloat = 0
 
     var body: some View {
         GeometryReader { proxy in
@@ -17,31 +18,25 @@ struct MainView: View {
                 )
 
                 ZStack {
-                    if store.currentTab == nil {
-                        TabPickerView(namespace: namespace, tabs: store.tabs.elements)
-                            .tabSelected { tabId in
-                                store.send(.selectTab(tabId), animation: .spring)
-                            }
-                            .tabClosed { tabId in
-                                store.send(.closeTab(tabId))
-                            }
+                    if store.currentTab == nil || isDraggingBack {
+                        TabPickerView(
+                            namespace: namespace,
+                            tabs: store.tabs.elements,
+                            applyMatchedGeometry: isDraggingBack == false
+                        )
+                        .tabSelected { tabId in
+                            store.send(.selectTab(tabId), animation: .spring)
+                        }
+                        .tabClosed { tabId in
+                            store.send(.closeTab(tabId))
+                        }
+                        .contentOpacity(dragCompletion)
                         .background(Color(UIColor(white: 0.2, alpha: 1)))
                     }
 
                     if let currentTab = store.currentTab {
                         ZStack {
-                            // Show previous snapshot while dragging back
-                            if isDraggingBack, currentTab.canGoBack,
-                               let previousSnapshot = currentTab.previousSnapshot
-                            {
-                                previousSnapshot
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                                    .clipped()
-                            }
-
-                            WebView(url: currentTab.url, id: currentTab.id)
+                            WebView(initialURL: currentTab.url, id: currentTab.id)
                                 .onBrandColorChange(region: .top(20)) { color in
                                     store.send(.brandColorChange(.top, color, currentTab.id), animation: .easeInOut)
                                 }
@@ -52,7 +47,6 @@ struct MainView: View {
                                     store.send(.webViewNavigationChanged(currentTab.id, phase))
                                 }
                                 .onSnapshot { image, url in
-                                    print("Got snapshot for url \(url)")
                                     store.send(.receivedTabSnapshot(id: currentTab.id, image, url))
                                 }
                                 .onNavigationFinished { url in
@@ -64,24 +58,29 @@ struct MainView: View {
                                 .onServerRedirect { url in
                                     store.send(.serverRedirect(currentTab.id, url))
                                 }
-//                                .modifier(EdgeNavigationGesture(
-//                                    canGoBack: currentTab.canGoBack,
-//                                    canGoForward: currentTab.canGoForward,
-//                                    onBack: { store.send(.goBack(currentTab.id)) },
-//                                    onForward: { store.send(.goForward(currentTab.id)) },
-//                                    isDraggingBack: $isDraggingBack
-//                                ))
                                 .if(store.displaySnapshotOverlay == false || currentTab.wasLoaded) {
                                     $0.matchedGeometryEffect(id: currentTab.id, in: namespace)
                                         .transition(.scale)
                                         .animation(.easeInOut, value: currentTab.id)
                                 }
+                                .background(currentTab.topBrandColor)
+                                .modifier(EdgeNavigationGesture(
+                                    canGoBack: currentTab.hasPreviousHistory == false,
+                                    canGoForward: false,
+                                    onBack: { store.send(.showTabsTapped) },
+                                    onForward: { store.send(.goForward(currentTab.id)) },
+                                    isDraggingBack: $isDraggingBack
+                                ).dragCompletionChanged { completion in
+                                    withAnimation(.easeInOut(duration: 0.5)) {
+                                        dragCompletion = completion
+                                    }
+                                })
                                 .id(currentTab.id)
 
                             // Web view image overlay for smooth matched geometry
                             // in case the tab was created from storage
                             // Covers up the initial loading
-                            if let snapshot = store.currentTab?.previousSnapshot, store.displaySnapshotOverlay, currentTab.wasLoaded == false {
+                            if let snapshot = store.currentTab?.currentSnapshot, store.displaySnapshotOverlay, currentTab.wasLoaded == false {
                                 snapshot
                                     .resizable()
                                     .clipped()

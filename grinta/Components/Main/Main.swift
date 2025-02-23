@@ -31,6 +31,7 @@ struct Main {
         case navigationFinished(BrowserTab.ID, URL)
         case goBack(BrowserTab.ID)
         case goForward(BrowserTab.ID)
+        case showTabsTapped
         case updateSnapshot(BrowserTab.ID, Image, URL)
     }
 
@@ -66,11 +67,17 @@ struct Main {
                 switch phase {
                 case let .started(url):
                     state.tabs[id: tabId]?.url = url
+                case let .urlChanged(url, hasPreviousHistory: hasPreviousHistory):
+                    state.tabs[id: tabId]?.url = url
+                    state.tabs[id: tabId]?.hasPreviousHistory = hasPreviousHistory
                 }
                 return .none
 
+            case .showTabsTapped:
+                state.currentTabId = nil
+                return .none
+
             case let .serverRedirect(tabId, url):
-                state.tabs[id: tabId]?.handleServerRedirect(to: url)
                 print("Server redirect to \(url)")
                 return .none
 
@@ -85,7 +92,6 @@ struct Main {
                 return .none
 
             case let .receivedTabSnapshot(id, image, url):
-                print("SNapshot for tab id: \(id)")
                 state.tabs[id: id]?.updateSnapshot(image, forURL: url)
                 return .none
 
@@ -140,11 +146,11 @@ struct Main {
                 }
 
             case let .goBack(tabId):
-                state.tabs[id: tabId]?.goBack()
+                // state.tabs[id: tabId]?.goBack()
                 return .none
 
             case let .goForward(tabId):
-                state.tabs[id: tabId]?.goForward()
+                // state.tabs[id: tabId]?.goForward()
                 return .none
 
             case let .updateSnapshot(tabId, image, url):

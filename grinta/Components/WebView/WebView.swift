@@ -4,6 +4,7 @@ import WebKit
 
 enum WebViewNavigationPhase {
     case started(URL)
+    case urlChanged(URL, hasPreviousHistory: Bool)
 }
 
 struct WebView: UIViewRepresentable {
@@ -22,7 +23,7 @@ struct WebView: UIViewRepresentable {
     private var navigationClosure: (@Sendable @MainActor (WebViewNavigationPhase) -> Void)?
     private var serverRedirectClosure: (@Sendable @MainActor (URL) -> Void)?
 
-    init(url: URL?, id: UUID) {
+    init(initialURL url: URL?, id: UUID) {
         self.url = url
         self.id = id
     }
@@ -48,7 +49,6 @@ struct WebView: UIViewRepresentable {
         context.coordinator.webView = webView
         webView.navigationDelegate = context.coordinator
 
-
         // TODO: Redo this logic - we need to store last url for a _tab_, not the WebView...
         if let url, let webViewURL = webView.url, url.isEquivalent(to: webViewURL) == false {
             webView.load(URLRequest(url: url))
@@ -59,16 +59,14 @@ struct WebView: UIViewRepresentable {
         return webView
     }
 
-    static func dismantleUIView(_ uiView: WKWebView, coordinator: Coordinator) {
+    static func dismantleUIView(_: WKWebView, coordinator: Coordinator) {
         coordinator.dismantle()
     }
 
     func updateUIView(_ webView: WKWebView, context: Context) {
-        guard let url else { return }
-
         webView.navigationDelegate = context.coordinator
-
-        let shouldLoad = context.coordinator.lastUILoadedURL.map { !url.isEquivalent(to: $0) } ?? true
+//
+//        let shouldLoad = context.coordinator.lastUILoadedURL.map { !url.isEquivalent(to: $0) } ?? true
 //        if shouldLoad {
 //            context.coordinator.lastUILoadedURL = url
 //            webView.load(URLRequest(url: url))
@@ -95,6 +93,7 @@ struct WebView: UIViewRepresentable {
         var lastUILoadedURL: URL?
         var token: NSKeyValueObservation?
         var urlObserver: NSKeyValueObservation?
+        var backForwardListObserver: NSKeyValueObservation?
         private var lastBrandColorPick: Date = .distantPast
 
         unowned var webView: WKWebView? {
@@ -130,10 +129,9 @@ struct WebView: UIViewRepresentable {
                               lastEmittedURL != newURL
                         else { return }
 
-
                         lastEmittedURL = newURL
                         self.lastUILoadedURL = newURL
-                        self.navigationClosure?(.started(newURL))
+                        self.navigationClosure?(.urlChanged(newURL, hasPreviousHistory: webView.backForwardList.backItem != nil))
                     }
                 }
             }
@@ -158,7 +156,6 @@ struct WebView: UIViewRepresentable {
         }
 
         func dismantle() {
-            print("DISMANTLE")
             urlObserver?.invalidate()
         }
 
@@ -168,7 +165,7 @@ struct WebView: UIViewRepresentable {
             }
         }
 
-        func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction) async -> WKNavigationActionPolicy {
+        func webView(_: WKWebView, decidePolicyFor navigationAction: WKNavigationAction) async -> WKNavigationActionPolicy {
             if let url = navigationAction.request.url {
                 // Handle all navigation types that could indicate a page change
                 switch navigationAction.navigationType {
@@ -187,7 +184,7 @@ struct WebView: UIViewRepresentable {
             return .allow
         }
 
-        func webView(_ webView: WKWebView, didReceiveServerRedirectForProvisionalNavigation navigation: WKNavigation!) {
+        func webView(_ webView: WKWebView, didReceiveServerRedirectForProvisionalNavigation _: WKNavigation!) {
             if let webViewURL = webView.url {
                 serverRedirectClosure?(webViewURL)
             }
@@ -216,7 +213,7 @@ struct WebView: UIViewRepresentable {
                     snapshotClosure?(Image(uiImage: image), url)
                 }
             }
-            
+
             pickBrandColors(webView: webView)
         }
 
@@ -224,7 +221,8 @@ struct WebView: UIViewRepresentable {
             switch UserHandler(rawValue: message.name) {
             case .urlChanged:
                 if let urlString = message.body as? String,
-                   let url = URL(string: urlString) {
+                   let url = URL(string: urlString)
+                {
                     Task { @MainActor in
                         navigationClosure?(.started(url))
                     }
@@ -267,7 +265,7 @@ struct WebView: UIViewRepresentable {
                     continue
                 }
 
-                Task.detached(priority: .medium) { [brandColorClosure] in
+                Task { @MainActor [brandColorClosure] in
                     let result = await WebViewAverageColorCalculator().calculateAverageColor(
                         for: webView,
                         in: webViewRegion
@@ -275,7 +273,11 @@ struct WebView: UIViewRepresentable {
 
                     switch result {
                     case let .success(color):
-                        await brandColorClosure.closure(Color(color))
+                        // Set the scroll view's background color to top "brand" color
+                        if case WebViewRegion.top = webViewRegion {
+                            webView.scrollView.backgroundColor = color
+                        }
+                        brandColorClosure.closure(Color(color))
                     case let .failure(failure):
                         print("Failure to pick brand color: \(failure)")
                     }
