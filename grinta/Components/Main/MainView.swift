@@ -5,8 +5,6 @@ import SwiftUI
 struct MainView: View {
     @Bindable var store: StoreOf<Main>
 
-    @State private var showSheet = true
-    @State private var settingsPresented = false
     @State private var isDraggingBack = false
     @Namespace private var namespace
 
@@ -20,12 +18,14 @@ struct MainView: View {
 
                 ZStack {
                     if store.currentTab == nil {
-                        TabPickerView(namespace: namespace, onSelectedTab: { tab in
-                            store.send(.selectTab(tab.id), animation: .spring)
-                        }, onCloseTab: { tab in
-                            store.send(.closeTab(tab.id))
-                        }, tabs: store.tabs.elements, selectedTabId: store.currentTabId)
-                            .background(Color(UIColor(white: 0.2, alpha: 1)))
+                        TabPickerView(namespace: namespace, tabs: store.tabs.elements)
+                            .tabSelected { tabId in
+                                store.send(.selectTab(tabId), animation: .spring)
+                            }
+                            .tabClosed { tabId in
+                                store.send(.closeTab(tabId))
+                            }
+                        .background(Color(UIColor(white: 0.2, alpha: 1)))
                     }
 
                     if let currentTab = store.currentTab {
@@ -49,32 +49,34 @@ struct MainView: View {
                                     store.send(.brandColorChange(.bottom, color, currentTab.id), animation: .easeInOut)
                                 }
                                 .onNavigation { phase in
-                                    print("==== Navigation changed for tab \(currentTab.id)")
                                     store.send(.webViewNavigationChanged(currentTab.id, phase))
                                 }
-                                .onSnapshot { image in
-                                    // print("on snapshot for tab id \(currentTab.id)")
-                                    store.send(.receivedTabSnapshot(id: currentTab.id, image))
+                                .onSnapshot { image, url in
+                                    print("Got snapshot for url \(url)")
+                                    store.send(.receivedTabSnapshot(id: currentTab.id, image, url))
                                 }
                                 .onNavigationFinished { url in
-                                    print("==== Navigation finished for tab \(currentTab.id)")
                                     store.send(.navigationFinished(currentTab.id, url))
                                 }
                                 .onWebsiteMetadata { metadata in
                                     store.send(.websiteMetadataFetched(currentTab.id, metadata))
                                 }
-                                .modifier(EdgeNavigationGesture(
-                                    canGoBack: currentTab.canGoBack,
-                                    canGoForward: currentTab.canGoForward,
-                                    onBack: { store.send(.goBack(currentTab.id)) },
-                                    onForward: { store.send(.goForward(currentTab.id)) },
-                                    isDraggingBack: $isDraggingBack
-                                ))
+                                .onServerRedirect { url in
+                                    store.send(.serverRedirect(currentTab.id, url))
+                                }
+//                                .modifier(EdgeNavigationGesture(
+//                                    canGoBack: currentTab.canGoBack,
+//                                    canGoForward: currentTab.canGoForward,
+//                                    onBack: { store.send(.goBack(currentTab.id)) },
+//                                    onForward: { store.send(.goForward(currentTab.id)) },
+//                                    isDraggingBack: $isDraggingBack
+//                                ))
                                 .if(store.displaySnapshotOverlay == false || currentTab.wasLoaded) {
                                     $0.matchedGeometryEffect(id: currentTab.id, in: namespace)
                                         .transition(.scale)
                                         .animation(.easeInOut, value: currentTab.id)
                                 }
+                                .id(currentTab.id)
 
                             // Web view image overlay for smooth matched geometry
                             // in case the tab was created from storage
@@ -99,7 +101,7 @@ struct MainView: View {
 
                 BottomBarBackgroundView(color: store.currentTab?.bottomBrandColor ?? .neutral400)
             }
-            .sheet(isPresented: $showSheet) {
+            .sheet(isPresented: $store.showSheet) {
                 MagicSheetView(store: store.scope(state: \.magicSheet, action: \.magicSheet))
                     .sheet(item: $store.scope(state: \.destination?.settings, action: \.destination.settings)) { store in
                         SettingsView(store: store)

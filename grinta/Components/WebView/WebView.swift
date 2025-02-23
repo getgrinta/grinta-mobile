@@ -18,8 +18,9 @@ struct WebView: UIViewRepresentable {
 
     private var brandColorClosures: [(region: ColorPickerRegion, closure: @Sendable @MainActor (Color) -> Void)] = []
     private var websiteMetadataClosure: (@Sendable @MainActor (WebsiteMetadata) -> Void)?
-    private var snapshotClosure: (@Sendable @MainActor (Image) -> Void)?
+    private var snapshotClosure: (@Sendable @MainActor (Image, URL) -> Void)?
     private var navigationClosure: (@Sendable @MainActor (WebViewNavigationPhase) -> Void)?
+    private var serverRedirectClosure: (@Sendable @MainActor (URL) -> Void)?
 
     init(url: URL?, id: UUID) {
         self.url = url
@@ -28,20 +29,25 @@ struct WebView: UIViewRepresentable {
 
     func makeCoordinator() -> Coordinator {
         Coordinator(
-            //  self,
             brandColorClosures: brandColorClosures,
             websiteMetadataClosure: websiteMetadataClosure,
             snapshotClosure: snapshotClosure,
-            navigationClosure: navigationClosure
+            navigationClosure: navigationClosure,
+            serverRedirectClosure: serverRedirectClosure
         )
     }
 
     func makeUIView(context: Context) -> WKWebView {
         let webView = WebViewHolder.shared.webView(for: id, messageHandler: context.coordinator)
         context.coordinator.lastUILoadedURL = url
+        context.coordinator.navigationClosure = navigationClosure
+        context.coordinator.snapshotClosure = snapshotClosure
+        context.coordinator.websiteMetadataClosure = websiteMetadataClosure
+        context.coordinator.serverRedirectClosure = serverRedirectClosure
+        context.coordinator.brandColorClosures = brandColorClosures
         context.coordinator.webView = webView
-        print("LE MAKEUIVIEW")
         webView.navigationDelegate = context.coordinator
+
 
         // TODO: Redo this logic - we need to store last url for a _tab_, not the WebView...
         if let url, let webViewURL = webView.url, url.isEquivalent(to: webViewURL) == false {
@@ -53,22 +59,25 @@ struct WebView: UIViewRepresentable {
         return webView
     }
 
+    static func dismantleUIView(_ uiView: WKWebView, coordinator: Coordinator) {
+        coordinator.dismantle()
+    }
+
     func updateUIView(_ webView: WKWebView, context: Context) {
         guard let url else { return }
 
         webView.navigationDelegate = context.coordinator
-        print("LE UPDATEUIVIEW")
 
         let shouldLoad = context.coordinator.lastUILoadedURL.map { !url.isEquivalent(to: $0) } ?? true
-        if shouldLoad {
-            context.coordinator.lastUILoadedURL = url
-            webView.load(URLRequest(url: url))
-        }
-
-        if context.coordinator.webView != webView {
-            context.coordinator.lastUILoadedURL = url
-            context.coordinator.webView = webView
-        }
+//        if shouldLoad {
+//            context.coordinator.lastUILoadedURL = url
+//            webView.load(URLRequest(url: url))
+//        }
+//
+//        if context.coordinator.webView != webView {
+//            context.coordinator.lastUILoadedURL = url
+//            context.coordinator.webView = webView
+//        }
 
         context.coordinator.navigationClosure = navigationClosure
         context.coordinator.snapshotClosure = snapshotClosure
@@ -79,11 +88,13 @@ struct WebView: UIViewRepresentable {
     final class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
         var brandColorClosures: [(region: ColorPickerRegion, closure: @Sendable @MainActor (Color) -> Void)]
         var websiteMetadataClosure: (@Sendable @MainActor (WebsiteMetadata) -> Void)?
-        var snapshotClosure: (@Sendable @MainActor (Image) -> Void)?
+        var snapshotClosure: (@Sendable @MainActor (Image, URL) -> Void)?
         var navigationClosure: (@Sendable @MainActor (WebViewNavigationPhase) -> Void)?
+        var serverRedirectClosure: (@Sendable @MainActor (URL) -> Void)?
 
         var lastUILoadedURL: URL?
         var token: NSKeyValueObservation?
+        var urlObserver: NSKeyValueObservation?
         private var lastBrandColorPick: Date = .distantPast
 
         unowned var webView: WKWebView? {
@@ -92,8 +103,9 @@ struct WebView: UIViewRepresentable {
 
                 token?.invalidate()
                 token = nil
+                urlObserver?.invalidate()
+                urlObserver = nil
 
-                // Throttle & cancel previous tasks
                 token = webView.observe(\.scrollView.contentOffset, options: [.old, .new]) { [weak self] _, change in
                     guard let self, change.oldValue != change.newValue else { return }
 
@@ -107,76 +119,116 @@ struct WebView: UIViewRepresentable {
                         }
                     }
                 }
+
+                var lastEmittedURL: URL?
+                // Add URL observation for SPAs
+                urlObserver = webView.observe(\.url, options: [.new]) { [weak self] webView, change in
+                    Task { @MainActor in
+                        guard let self,
+                              let newURL = change.newValue ?? webView.url,
+                              self.lastUILoadedURL?.absoluteString != newURL.absoluteString,
+                              lastEmittedURL != newURL
+                        else { return }
+
+
+                        lastEmittedURL = newURL
+                        self.lastUILoadedURL = newURL
+                        self.navigationClosure?(.started(newURL))
+                    }
+                }
             }
+        }
+
+        deinit {
+            urlObserver?.invalidate()
         }
 
         init(
             brandColorClosures: [(region: ColorPickerRegion, closure: @Sendable @MainActor (Color) -> Void)],
             websiteMetadataClosure: (@Sendable @MainActor (WebsiteMetadata) -> Void)?,
-            snapshotClosure: (@Sendable @MainActor (Image) -> Void)?,
-            navigationClosure: (@Sendable @MainActor (WebViewNavigationPhase) -> Void)?
-            // navigationFinishedClosure: (@Sendable @MainActor (WebViewNavigationPhase) -> Void)?
+            snapshotClosure: (@Sendable @MainActor (Image, URL) -> Void)?,
+            navigationClosure: (@Sendable @MainActor (WebViewNavigationPhase) -> Void)?,
+            serverRedirectClosure: (@Sendable @MainActor (URL) -> Void)?
         ) {
             self.brandColorClosures = brandColorClosures
             self.websiteMetadataClosure = websiteMetadataClosure
             self.snapshotClosure = snapshotClosure
             self.navigationClosure = navigationClosure
+            self.serverRedirectClosure = serverRedirectClosure
+        }
+
+        func dismantle() {
+            print("DISMANTLE")
+            urlObserver?.invalidate()
         }
 
         func webView(_ webView: WKWebView, didStartProvisionalNavigation _: WKNavigation!) {
             if let url = webView.url {
                 navigationClosure?(.started(url))
             }
-
-            pickBrandColors(webView: webView)
         }
 
-        func webView(_ webView: WKWebView, didCommit _: WKNavigation!) {
-            pickBrandColors(webView: webView)
+        func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction) async -> WKNavigationActionPolicy {
+            if let url = navigationAction.request.url {
+                // Handle all navigation types that could indicate a page change
+                switch navigationAction.navigationType {
+                case .linkActivated, .formSubmitted, .backForward, .reload, .formResubmitted:
+                    navigationClosure?(.started(url))
+                case .other:
+                    // For SPAs and AJAX, check if it's a main frame navigation
+                    // or if the URL is different from the current one
+                    if navigationAction.targetFrame?.isMainFrame == true {
+                        navigationClosure?(.started(url))
+                    }
+                @unknown default:
+                    break
+                }
+            }
+            return .allow
+        }
+
+        func webView(_ webView: WKWebView, didReceiveServerRedirectForProvisionalNavigation navigation: WKNavigation!) {
+            if let webViewURL = webView.url {
+                serverRedirectClosure?(webViewURL)
+            }
         }
 
         func webView(_ webView: WKWebView, didFinish _: WKNavigation!) {
             if let url = webView.url {
-                // navigationFinishedClosure?(url)
+                // Update last URL and notify about navigation
+                lastUILoadedURL = url
+                navigationClosure?(.started(url))
             }
-            pickBrandColors(webView: webView)
 
+            // Take snapshot and update colors
             Task { @MainActor [snapshotClosure] in
                 try await Task.sleep(for: .milliseconds(500))
                 let config = WKSnapshotConfiguration()
-
-                // take smaller dim??
-                // fix warnings
-                // make only 1 snapshot and pass to colors etc
                 config.rect = CGRect(x: 0, y: 0, width: webView.frame.width, height: webView.frame.height)
 
-                // Snapshot must be taken on the main thread.
                 let (image, _) = await withCheckedContinuation { continuation in
                     webView.takeSnapshot(with: config) { image, error in
                         continuation.resume(returning: (image, error))
                     }
                 }
 
-                if let image {
-                    snapshotClosure?(Image(uiImage: image))
+                if let image, let url = webView.url {
+                    snapshotClosure?(Image(uiImage: image), url)
                 }
             }
-        }
-
-        func webView(_: WKWebView, decidePolicyFor navigationAction: WKNavigationAction) async -> WKNavigationActionPolicy {
-            if let url = navigationAction.request.url {
-                // Only handle new page loads, not same-page navigation or anchor changes
-                if navigationAction.navigationType == .linkActivated ||
-                    navigationAction.navigationType == .formSubmitted
-                {
-                    navigationClosure?(.started(url))
-                }
-            }
-            return .allow
+            
+            pickBrandColors(webView: webView)
         }
 
         func userContentController(_: WKUserContentController, didReceive message: WKScriptMessage) {
             switch UserHandler(rawValue: message.name) {
+            case .urlChanged:
+                if let urlString = message.body as? String,
+                   let url = URL(string: urlString) {
+                    Task { @MainActor in
+                        navigationClosure?(.started(url))
+                    }
+                }
             case .source:
                 handleSourceUserMessage(message: message)
             default:
@@ -223,9 +275,6 @@ struct WebView: UIViewRepresentable {
 
                     switch result {
                     case let .success(color):
-                        if case WebViewRegion.top = webViewRegion {
-                            print("Picked top color \(color)")
-                        }
                         await brandColorClosure.closure(Color(color))
                     case let .failure(failure):
                         print("Failure to pick brand color: \(failure)")
@@ -249,15 +298,20 @@ extension WebView {
         return copy
     }
 
-    func onSnapshot(closure: @escaping @Sendable @MainActor (Image) -> Void) -> Self {
+    func onSnapshot(closure: @escaping @Sendable @MainActor (Image, URL) -> Void) -> Self {
         var copy = self
         copy.snapshotClosure = closure
         return copy
     }
 
+    func onServerRedirect(closure: @escaping @Sendable @MainActor (URL) -> Void) -> Self {
+        var copy = self
+        copy.serverRedirectClosure = closure
+        return copy
+    }
+
     func onNavigation(closure: @escaping @Sendable @MainActor (WebViewNavigationPhase) -> Void) -> Self {
         var copy = self
-        print("ON NAVIGATION")
         copy.navigationClosure = closure
         return copy
     }
@@ -271,4 +325,5 @@ extension WebView {
 
 enum UserHandler: String {
     case source
+    case urlChanged
 }

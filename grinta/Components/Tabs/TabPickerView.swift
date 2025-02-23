@@ -2,13 +2,17 @@ import SFSafeSymbols
 import SwiftUI
 
 struct TabPickerView: View {
+    private var onSelectedTab: ((BrowserTab.ID) -> Void)?
+    private var onCloseTab: ((BrowserTab.ID) -> Void)?
+
     let namespace: Namespace.ID
-
-    var onSelectedTab: (BrowserTab) -> Void
-    var onCloseTab: (BrowserTab) -> Void
     let tabs: [BrowserTab]
-    let selectedTabId: BrowserTab.ID?
 
+    init(namespace: Namespace.ID, tabs: [BrowserTab]) {
+        self.namespace = namespace
+        self.tabs = tabs
+    }
+    
     var body: some View {
         if tabs.isEmpty == false {
             ScrollView {
@@ -23,59 +27,11 @@ struct TabPickerView: View {
                     LazyVGrid(columns: columns, spacing: 10) {
                         ForEach(tabs) { tab in
                             Button {
-                                onSelectedTab(tab)
+                                onSelectedTab?(tab.id)
                             } label: {
                                 VStack(alignment: .leading, spacing: 0) {
-                                    HStack(spacing: 4) {
-                                        if let faviconURL = tab.faviconURL {
-                                            AsyncImage(url: faviconURL, content: { image in
-                                                image
-                                                    .resizable()
-                                                    .cornerRadius(6)
-                                            }, placeholder: {
-                                                EmptyView()
-                                            })
-                                            .frame(width: 16, height: 16)
-                                            .aspectRatio(contentMode: .fill)
-                                            .layoutPriority(1)
-                                        }
-
-                                        Text(tab.title)
-                                            .padding(.vertical, 6)
-                                            .font(.caption)
-                                            .lineLimit(1)
-                                            .fontWeight(.medium)
-                                            .frame(maxWidth: .infinity, alignment: .leading)
-
-                                        Button {
-                                            onCloseTab(tab)
-                                        } label: {
-                                            Image(systemSymbol: .xmark)
-                                                .resizable()
-                                                .frame(width: 10, height: 10)
-                                                .foregroundStyle(Color.neutral500)
-                                        }
-                                        .frame(maxHeight: .infinity)
-                                        .padding(.horizontal, 10)
-                                        .layoutPriority(1)
-                                    }
-                                    .frame(minHeight: 26)
-                                    .padding(.leading, 6)
-                                    .background(Color.neutral200)
-                                    .foregroundStyle(Color.neutral600)
-
-                                    if let image = tab.history.last?.snapshot {
-                                        image
-                                            .resizable()
-                                            .scaledToFill()
-                                            .frame(width: halfWidth)
-                                            .frame(height: 215, alignment: .top)
-                                    } else {
-                                        Color.neutral100
-                                            .aspectRatio(1, contentMode: .fit)
-                                            .frame(height: 215)
-                                            .clipped()
-                                    }
+                                    TabHeader(tab: tab)
+                                    TabContent(tab: tab, width: halfWidth)
                                 }
                                 .clipShape(RoundedRectangle(cornerRadius: 12))
                             }
@@ -87,16 +43,87 @@ struct TabPickerView: View {
             }
         } else {
             ZStack {
-                Text("No tabs yet ;(")
+                Text("You don't have any tabs yet")
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+    }
+
+    @ViewBuilder
+    private func TabContent(tab: BrowserTab, width: CGFloat) -> some View {
+        if let image = tab.history.last?.snapshot {
+            image
+                .resizable()
+                .scaledToFill()
+                .frame(width: width)
+                .frame(height: 215, alignment: .top)
+        } else {
+            Color.neutral100
+                .aspectRatio(1, contentMode: .fit)
+                .frame(height: 215)
+                .clipped()
+        }
+    }
+
+    private func TabHeader(tab: BrowserTab) -> some View {
+        HStack(spacing: 4) {
+            if let faviconURL = tab.faviconURL {
+                AsyncImage(url: faviconURL, content: { image in
+                    image
+                        .resizable()
+                        .cornerRadius(6)
+                }, placeholder: {
+                    EmptyView()
+                })
+                .frame(width: 16, height: 16)
+                .aspectRatio(contentMode: .fill)
+                .layoutPriority(1)
+            }
+
+            Text(tab.title)
+                .padding(.vertical, 6)
+                .font(.caption)
+                .lineLimit(1)
+                .fontWeight(.medium)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            Button {
+                onCloseTab?(tab.id)
+            } label: {
+                Image(systemSymbol: .xmark)
+                    .resizable()
+                    .frame(width: 10, height: 10)
+                    .foregroundStyle(Color.neutral500)
+            }
+            .frame(maxHeight: .infinity)
+            .padding(.horizontal, 10)
+            .layoutPriority(1)
+        }
+        .frame(minHeight: 26)
+        .padding(.leading, 6)
+        .background(Color.neutral200)
+        .foregroundStyle(Color.neutral600)
+    }
+}
+
+extension TabPickerView {
+    func tabSelected(_ closure: @escaping (BrowserTab.ID) -> Void) -> Self {
+        var copy = self
+        copy.onSelectedTab = closure
+        return copy
+    }
+
+    func tabClosed(_ closure: @escaping (BrowserTab.ID) -> Void) -> Self {
+        var copy = self
+        copy.onCloseTab = closure
+        return copy
     }
 }
 
 #Preview("Default") {
     @Previewable @Namespace var ns
 
-    TabPickerView(namespace: ns, onSelectedTab: { _ in }, onCloseTab: { _ in }, tabs: [
+    TabPickerView(namespace: ns, tabs: [
         .init(id: UUID(), url: URL(string: "https://www.wp.pl")!),
-    ], selectedTabId: nil)
+    ])
 }

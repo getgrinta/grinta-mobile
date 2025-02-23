@@ -24,13 +24,14 @@ struct Main {
         case destination(PresentationAction<Destination.Action>)
         case websiteMetadataFetched(BrowserTab.ID, WebsiteMetadata)
         case webViewNavigationChanged(BrowserTab.ID, WebViewNavigationPhase)
-        case receivedTabSnapshot(id: BrowserTab.ID, Image)
+        case receivedTabSnapshot(id: BrowserTab.ID, Image, URL)
+        case serverRedirect(BrowserTab.ID, URL)
         case brandColorChange(BrandColorRegion, Color, BrowserTab.ID)
         case dismissSnapshotOverlay
         case navigationFinished(BrowserTab.ID, URL)
         case goBack(BrowserTab.ID)
         case goForward(BrowserTab.ID)
-        case updateSnapshot(BrowserTab.ID, Image)
+        case updateSnapshot(BrowserTab.ID, Image, URL)
     }
 
     @ObservableState
@@ -41,6 +42,8 @@ struct Main {
         var tabs: IdentifiedArrayOf<BrowserTab> = []
         var currentTabId: BrowserTab.ID?
         var displaySnapshotOverlay = false
+        var showSheet = true
+        var settingsPresented = false
 
         var currentTab: BrowserTab? {
             guard let currentTabId else { return nil }
@@ -66,7 +69,13 @@ struct Main {
                 }
                 return .none
 
+            case let .serverRedirect(tabId, url):
+                state.tabs[id: tabId]?.handleServerRedirect(to: url)
+                print("Server redirect to \(url)")
+                return .none
+
             case let .brandColorChange(region, color, tabId):
+                // print("Brand color change for tab id: \(tabId)")
                 switch region {
                 case .top:
                     state.tabs[id: tabId]?.topBrandColor = color
@@ -75,8 +84,9 @@ struct Main {
                 }
                 return .none
 
-            case let .receivedTabSnapshot(id, image):
-                state.tabs[id: id]?.updateCurrentSnapshot(image)
+            case let .receivedTabSnapshot(id, image, url):
+                print("SNapshot for tab id: \(id)")
+                state.tabs[id: id]?.updateSnapshot(image, forURL: url)
                 return .none
 
             case let .navigationFinished(tabId, url):
@@ -137,8 +147,8 @@ struct Main {
                 state.tabs[id: tabId]?.goForward()
                 return .none
 
-            case let .updateSnapshot(tabId, image):
-                state.tabs[id: tabId]?.updateCurrentSnapshot(image)
+            case let .updateSnapshot(tabId, image, url):
+                state.tabs[id: tabId]?.updateSnapshot(image, forURL: url)
                 return .none
 
             case .dismissSnapshotOverlay:
