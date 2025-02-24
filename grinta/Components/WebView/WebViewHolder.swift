@@ -11,6 +11,27 @@ final class WebViewHolder: ObservableObject {
             return view
         }
 
+        let configuration = createConfiguration(messageHandler: messageHandler)
+
+        setupNavigationHandler(configuration: configuration, messageHandler: messageHandler)
+
+        let webView = WKWebView(frame: .zero, configuration: configuration)
+        webView.allowsBackForwardNavigationGestures = true
+        webView.allowsLinkPreview = true
+
+#if DEBUG
+        webView.isInspectable = true
+#endif
+
+        let refreshControl = UIRefreshControl()
+        refreshControl.addTarget(coordinator, action: #selector(WebView.Coordinator.handleRefresh(_:)), for: .valueChanged)
+        webView.scrollView.refreshControl = refreshControl
+
+        webViews[tabId] = webView
+        return webView
+    }
+
+    private func createConfiguration(messageHandler: any WKScriptMessageHandler) -> WKWebViewConfiguration {
         let configuration = WKWebViewConfiguration()
         configuration.allowsInlineMediaPlayback = false
         configuration.mediaTypesRequiringUserActionForPlayback = .all
@@ -25,20 +46,7 @@ final class WebViewHolder: ObservableObject {
         configuration.userContentController.addUserScript(sourceScript)
         configuration.userContentController.add(messageHandler, name: UserHandler.source.rawValue)
 
-        setupNavigationHandler(configuration: configuration, messageHandler: messageHandler)
-
-        let webView = WKWebView(frame: .zero, configuration: configuration)
-        webView.allowsBackForwardNavigationGestures = true
-        webView.allowsLinkPreview = true
-        // webView.customUserAgent = "Grinta/0.1.0"
-
-        // Set up the refresh control.
-        let refreshControl = UIRefreshControl()
-        refreshControl.addTarget(coordinator, action: #selector(WebView.Coordinator.handleRefresh(_:)), for: .valueChanged)
-        webView.scrollView.refreshControl = refreshControl
-
-        webViews[tabId] = webView
-        return webView
+        return configuration
     }
 
     // Add observation for hash changes and other SPA navigation

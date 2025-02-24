@@ -39,27 +39,29 @@ struct WebView: UIViewRepresentable {
             historyClosure: historyClosure
         )
     }
-
+    
     func makeUIView(context: Context) -> WKWebView {
         let webView = WebViewHolder.shared.webView(for: id, messageHandler: context.coordinator, coordinator: context.coordinator)
+
         context.coordinator.lastUILoadedURL = url
+        context.coordinator.webView = webView
+        updateContextClosures(context)
+        webView.navigationDelegate = context.coordinator
+
+        if let url, webView.url == nil {
+            webView.load(URLRequest(url: url))
+        }
+
+        return webView
+    }
+
+    private func updateContextClosures(_ context: WebView.Context) {
         context.coordinator.navigationClosure = navigationClosure
         context.coordinator.snapshotClosure = snapshotClosure
         context.coordinator.websiteMetadataClosure = websiteMetadataClosure
         context.coordinator.serverRedirectClosure = serverRedirectClosure
         context.coordinator.brandColorClosures = brandColorClosures
         context.coordinator.historyClosure = historyClosure
-        context.coordinator.webView = webView
-        webView.navigationDelegate = context.coordinator
-
-        // TODO: Redo this logic - we need to store last url for a _tab_, not the WebView...
-        if let url, let webViewURL = webView.url, url.isEquivalent(to: webViewURL) == false {
-            // webView.load(URLRequest(url: url))
-        } else if let url, webView.url == nil {
-            webView.load(URLRequest(url: url))
-        }
-
-        return webView
     }
 
     static func dismantleUIView(_: WKWebView, coordinator: Coordinator) {
@@ -68,23 +70,7 @@ struct WebView: UIViewRepresentable {
 
     func updateUIView(_ webView: WKWebView, context: Context) {
         webView.navigationDelegate = context.coordinator
-//
-//        let shouldLoad = context.coordinator.lastUILoadedURL.map { !url.isEquivalent(to: $0) } ?? true
-//        if shouldLoad {
-//            context.coordinator.lastUILoadedURL = url
-//            webView.load(URLRequest(url: url))
-//        }
-//
-//        if context.coordinator.webView != webView {
-//            context.coordinator.lastUILoadedURL = url
-//            context.coordinator.webView = webView
-//        }
-
-        context.coordinator.navigationClosure = navigationClosure
-        context.coordinator.snapshotClosure = snapshotClosure
-        context.coordinator.websiteMetadataClosure = websiteMetadataClosure
-        context.coordinator.brandColorClosures = brandColorClosures
-        context.coordinator.historyClosure = historyClosure
+        updateContextClosures(context)
     }
 
     final class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {

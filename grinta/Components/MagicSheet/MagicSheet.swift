@@ -109,7 +109,7 @@ struct MagicSheet {
                 let searchQuery = SearchQuery(state.searchText)
                 guard searchQuery.isEmpty == false else { return .none }
 
-                guard let urlToOpen = searchEngine.searchURL(.startPage, searchQuery) else {
+                guard let urlToOpen = searchEngine.searchURL(.google, searchQuery) else {
                     return .none
                 }
 
@@ -199,7 +199,7 @@ struct MagicSheet {
                     return .none
                 case .note:
                     let query = SearchQuery(suggestion.title)
-                    guard let url = searchEngine.searchURL(.startPage, query) else {
+                    guard let url = searchEngine.searchURL(.google, query) else {
                         return .none
                     }
                     return .send(.delegate(.openURL(url)))
@@ -212,7 +212,7 @@ struct MagicSheet {
                     )
                 case .search:
                     let query = SearchQuery(suggestion.title)
-                    guard let url = searchEngine.searchURL(.startPage, query) else {
+                    guard let url = searchEngine.searchURL(.google, query) else {
                         return .none
                     }
 
@@ -247,7 +247,7 @@ struct MagicSheet {
                 let urlToOpen = if query.isWebsiteUrl {
                     query.websiteURL
                 } else {
-                    searchEngine.searchURL(.startPage, query)
+                    searchEngine.searchURL(.google, query)
                 }
 
                 return .concatenate(
