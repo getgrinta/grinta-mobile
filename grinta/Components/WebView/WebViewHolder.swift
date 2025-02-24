@@ -19,9 +19,9 @@ final class WebViewHolder: ObservableObject {
         webView.allowsBackForwardNavigationGestures = true
         webView.allowsLinkPreview = true
 
-#if DEBUG
-        webView.isInspectable = true
-#endif
+        #if DEBUG
+            webView.isInspectable = true
+        #endif
 
         let refreshControl = UIRefreshControl()
         refreshControl.addTarget(coordinator, action: #selector(WebView.Coordinator.handleRefresh(_:)), for: .valueChanged)

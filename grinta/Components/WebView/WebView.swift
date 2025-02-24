@@ -39,7 +39,7 @@ struct WebView: UIViewRepresentable {
             historyClosure: historyClosure
         )
     }
-    
+
     func makeUIView(context: Context) -> WKWebView {
         let webView = WebViewHolder.shared.webView(for: id, messageHandler: context.coordinator, coordinator: context.coordinator)
 

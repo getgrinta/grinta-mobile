@@ -2,7 +2,7 @@ import Foundation
 import SwiftSoup
 import WebKit
 
-struct WebsiteMetadata: Decodable {
+struct WebsiteMetadata: Codable, Equatable {
     let title: String
     let description: String
     let host: String

@@ -109,6 +109,9 @@ struct MainView: View {
             }
             .ignoresSafeArea(.all)
         }
+        .onAppear {
+            store.send(.onAppear)
+        }
     }
 }
 

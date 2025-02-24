@@ -31,6 +31,8 @@ struct Main {
         case navigationFinished(BrowserTab.ID, URL)
         case showTabsTapped
         case updateSnapshot(BrowserTab.ID, Image, URL)
+        case onAppear
+        case loadedTabs([BrowserTab])
     }
 
     @ObservableState
@@ -54,12 +56,29 @@ struct Main {
     @Dependency(WebsiteMetadataStoreClient.self) var websiteMetadataClient
     @Dependency(HistoryArchiveClient.self) var historyArchive
     @Dependency(\.date) var now
+    @Dependency(\.tabPersistence) var tabPersistence
 
     var body: some ReducerOf<Self> {
         BindingReducer()
         Reduce { state, action in
             switch action {
             case .binding:
+                return .none
+
+            case .onAppear:
+                return .run { send in
+                    let tabs = try await tabPersistence.loadTabsWithSnapshots()
+                    await send(.loadedTabs(tabs))
+                }
+
+            case let .loadedTabs(tabs):
+                let tabsByNewestLast = tabs.sorted(by: { $0.creationTime < $1.creationTime })
+                state.tabs = IdentifiedArrayOf(uniqueElements: tabsByNewestLast)
+
+                if state.currentTabId == nil {
+                    state.currentTabId = tabs.last?.id
+                }
+
                 return .none
 
             case let .webViewNavigationChanged(tabId, phase):
@@ -69,11 +88,8 @@ struct Main {
                 case let .urlChanged(url):
                     state.tabs[id: tabId]?.url = url
                 }
-                return .run { _ in
-//                    switch phase {
-//                    case let .started(url), let .urlChanged(url):
-                    // try await historyArchive.store(item: HistoryItem(query: SearchQuery(url.absoluteString), type: .website))
-//                    }
+                return .run { [tabs = state.tabs] _ in
+                    try await tabPersistence.saveTabs(tabs.elements)
                 }
 
             case let .historyChanged(tabId, hasHistory):
@@ -93,11 +109,16 @@ struct Main {
                 case .bottom:
                     state.tabs[id: tabId]?.bottomBrandColor = color
                 }
-                return .none
+                return .run { [tabs = state.tabs] _ in
+                    try await tabPersistence.saveTabs(tabs.elements)
+                }
 
             case let .receivedTabSnapshot(id, image, url):
                 state.tabs[id: id]?.updateSnapshot(image, forURL: url)
-                return .none
+                return .run { [tabs = state.tabs] _ in
+                    try await tabPersistence.saveSnapshot(id, image)
+                    try await tabPersistence.saveTabs(tabs.elements)
+                }
 
             case let .navigationFinished(tabId, url):
                 state.tabs[id: tabId]?.url = url
@@ -116,7 +137,12 @@ struct Main {
 
             case let .closeTab(tabId):
                 state.tabs.remove(id: tabId)
-                return .none
+                if state.currentTabId == tabId {
+                    state.currentTabId = state.tabs.first?.id
+                }
+                return .run { [tabs = state.tabs] _ in
+                    try await tabPersistence.saveTabs(tabs.elements)
+                }
 
             case .destination:
                 return .none
@@ -142,11 +168,9 @@ struct Main {
                 }
 
             case let .websiteMetadataFetched(id, metadata):
-                state.tabs[id: id]?.title = metadata.title
-                state.tabs[id: id]?.faviconURL = URL(string: metadata.favicon)
-                state.tabs[id: id]?.wasLoaded = true
-                return .run { _ in
-                    try await websiteMetadataClient.store(item: metadata, hostname: SearchQuery(metadata.host).canonicalHost)
+                state.tabs[id: id]?.metadata = metadata
+                return .run { [tabs = state.tabs] _ in
+                    try await tabPersistence.saveTabs(tabs.elements)
                 }
 
             case let .updateSnapshot(tabId, image, url):

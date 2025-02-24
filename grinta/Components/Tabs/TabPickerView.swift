@@ -66,7 +66,6 @@ struct TabPickerView: View {
                 .frame(height: 215, alignment: .top)
         } else {
             Color.neutral100
-                .aspectRatio(1, contentMode: .fit)
                 .frame(height: 215)
                 .clipped()
         }
@@ -74,7 +73,7 @@ struct TabPickerView: View {
 
     private func TabHeader(tab: BrowserTab) -> some View {
         HStack(spacing: 4) {
-            if let faviconURL = tab.faviconURL {
+            if let metadata = tab.metadata, let faviconURL = URL(string: metadata.favicon) {
                 AsyncImage(url: faviconURL, content: { image in
                     image
                         .resizable()
@@ -89,7 +88,7 @@ struct TabPickerView: View {
 
             Text(tab.title)
                 .padding(.vertical, 6)
-                .font(.caption)
+                .font(.caption2)
                 .lineLimit(1)
                 .fontWeight(.medium)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -101,6 +100,8 @@ struct TabPickerView: View {
                     .resizable()
                     .frame(width: 10, height: 10)
                     .foregroundStyle(Color.neutral500)
+                    .font(.body)
+                    .fontWeight(.semibold)
             }
             .frame(maxHeight: .infinity)
             .padding(.horizontal, 10)
@@ -136,7 +137,14 @@ extension TabPickerView {
 #Preview("Default") {
     @Previewable @Namespace var ns
 
-    TabPickerView(namespace: ns, tabs: [
-        .init(id: UUID(), url: URL(string: "https://www.wp.pl")!),
-    ], applyMatchedGeometry: true)
+    @Previewable var tabs: [BrowserTab] = {
+        var tabs = [
+            BrowserTab(id: UUID(), url: URL(string: "https://www.wp.pl")!),
+        ]
+        tabs[0].title = "DJI Drone - Mini 3 - Sale"
+
+        return tabs
+    }()
+
+    TabPickerView(namespace: ns, tabs: tabs, applyMatchedGeometry: true)
 }
