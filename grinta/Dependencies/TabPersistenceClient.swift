@@ -9,6 +9,7 @@ struct TabPersistenceClient {
     var saveSnapshot: @Sendable (BrowserTab.ID, Image) async throws -> Void
     var loadSnapshot: @Sendable (BrowserTab.ID) async throws -> Image?
     var loadTabsWithSnapshots: @Sendable () async throws -> [BrowserTab]
+    var removeSnapshot: @Sendable (BrowserTab.ID) async throws -> Void
 }
 
 enum TabPersistenceClientError: Error {
@@ -21,6 +22,10 @@ extension TabPersistenceClient: DependencyKey {
         let snapshotsDirectory = documentsDirectory.appendingPathComponent("snapshots")
         let tabsURL = documentsDirectory.appendingPathComponent("tabs.json")
 
+        let snapshotURL: @Sendable (BrowserTab.ID) -> URL = { tabId in
+            snapshotsDirectory.appendingPathComponent("\(tabId).jpg")
+        }
+
         let loadTabs: @Sendable () async throws -> [BrowserTab] = {
             guard FileManager.default.fileExists(atPath: tabsURL.path) else { return [] }
             let data = try Data(contentsOf: tabsURL)
@@ -28,9 +33,9 @@ extension TabPersistenceClient: DependencyKey {
         }
 
         let loadSnapshot: @Sendable (BrowserTab.ID) async throws -> Image? = { tabId in
-            let snapshotURL = snapshotsDirectory.appendingPathComponent("\(tabId).jpg")
-            guard FileManager.default.fileExists(atPath: snapshotURL.path),
-                  let data = try? Data(contentsOf: snapshotURL),
+            let url = snapshotURL(tabId)
+            guard FileManager.default.fileExists(atPath: url.path),
+                  let data = try? Data(contentsOf: url),
                   let uiImage = UIImage(data: data)
             else { return nil }
             return Image(uiImage: uiImage)
@@ -56,9 +61,7 @@ extension TabPersistenceClient: DependencyKey {
                 try initializeDirectories()
 
                 guard let data = await image.jpgData() else { throw TabPersistenceClientError.couldNotSerializeImage }
-                let fileName = "\(tabId).jpg"
-                let snapshotURL = snapshotsDirectory.appendingPathComponent(fileName)
-                try data.write(to: snapshotURL)
+                try data.write(to: snapshotURL(tabId))
             },
             loadSnapshot: loadSnapshot,
             loadTabsWithSnapshots: {
@@ -81,6 +84,12 @@ extension TabPersistenceClient: DependencyKey {
                 }
 
                 return tabsWithSnapshots.elements
+            },
+            removeSnapshot: { tabId in
+                let url = snapshotURL(tabId)
+                if FileManager.default.fileExists(atPath: url.path) {
+                    try FileManager.default.removeItem(at: url)
+                }
             }
         )
     }
@@ -91,7 +100,8 @@ extension TabPersistenceClient: DependencyKey {
             loadTabs: { [] },
             saveSnapshot: { _, _ in },
             loadSnapshot: { _ in nil },
-            loadTabsWithSnapshots: { [] }
+            loadTabsWithSnapshots: { [] },
+            removeSnapshot: { _ in }
         )
     }
 }
@@ -108,6 +118,6 @@ private extension Image {
     func jpgData() -> Data? {
         let renderer = ImageRenderer(content: self)
         renderer.scale = UIScreen.main.scale
-        return renderer.uiImage?.jpegData(compressionQuality: 0.7)
+        return renderer.uiImage?.jpegData(compressionQuality: 0.1)
     }
 }

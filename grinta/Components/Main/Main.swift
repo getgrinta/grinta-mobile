@@ -135,12 +135,10 @@ struct Main {
                     await send(.dismissSnapshotOverlay)
                 }
 
-            case let .closeTab(tabId):
-                state.tabs.remove(id: tabId)
-                if state.currentTabId == tabId {
-                    state.currentTabId = state.tabs.first?.id
-                }
+            case let .closeTab(id):
+                state.tabs.remove(id: id)
                 return .run { [tabs = state.tabs] _ in
+                    try await tabPersistence.removeSnapshot(id)
                     try await tabPersistence.saveTabs(tabs.elements)
                 }
 

@@ -18,8 +18,8 @@ struct TabPickerView: View {
 
     var body: some View {
         if tabs.isEmpty == false {
-            ScrollView {
-                GeometryReader { proxy in
+            GeometryReader { proxy in
+                ScrollView {
                     let halfWidth = (proxy.size.width / 2) - 20
 
                     let columns = [
@@ -139,7 +139,13 @@ extension TabPickerView {
 
     @Previewable var tabs: [BrowserTab] = {
         var tabs = [
+            BrowserTab(id: UUID(), url: URL(string: "https://www.bbc.co.uk")!),
+            BrowserTab(id: UUID(), url: URL(string: "https://www.reddit.com")!),
+            BrowserTab(id: UUID(), url: URL(string: "https://www.chip.pl")!),
+            BrowserTab(id: UUID(), url: URL(string: "https://www.ebay.de")!),
             BrowserTab(id: UUID(), url: URL(string: "https://www.wp.pl")!),
+            BrowserTab(id: UUID(), url: URL(string: "https://www.google.com")!),
+            BrowserTab(id: UUID(), url: URL(string: "https://www.apple.com")!),
         ]
         tabs[0].title = "DJI Drone - Mini 3 - Sale"
 
