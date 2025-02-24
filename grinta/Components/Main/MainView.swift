@@ -25,10 +25,10 @@ struct MainView: View {
                             applyMatchedGeometry: isDraggingBack == false
                         )
                         .tabSelected { tabId in
-                            store.send(.selectTab(tabId), animation: .spring)
+                            store.send(.selectTab(tabId), animation: .easeInOut)
                         }
                         .tabClosed { tabId in
-                            store.send(.closeTab(tabId))
+                            store.send(.closeTab(tabId), animation: .easeInOut(duration: 0.2))
                         }
                         .contentOpacity(dragCompletion)
                         .background(Color(UIColor(white: 0.2, alpha: 1)))
@@ -52,6 +52,9 @@ struct MainView: View {
                                 .onNavigationFinished { url in
                                     store.send(.navigationFinished(currentTab.id, url))
                                 }
+                                .onHistoryChange { hasHistory in
+                                    store.send(.historyChanged(currentTab.id, hasHistory))
+                                }
                                 .onWebsiteMetadata { metadata in
                                     store.send(.websiteMetadataFetched(currentTab.id, metadata))
                                 }
@@ -61,15 +64,17 @@ struct MainView: View {
                                         .animation(.easeInOut, value: currentTab.id)
                                 }
                                 .background(currentTab.topBrandColor)
-                                .modifier(EdgeNavigationGesture(
-                                    canGoBack: currentTab.hasPreviousHistory == false,
-                                    onBack: { store.send(.showTabsTapped) },
-                                    isDraggingBack: $isDraggingBack
-                                ).dragCompletionChanged { completion in
-                                    withAnimation(.easeInOut(duration: 0.5)) {
-                                        dragCompletion = completion
-                                    }
-                                })
+                                .if(currentTab.hasPreviousHistory == false) {
+                                    $0.modifier(DragBackNavigationGesture(
+                                        canGoBack: true,
+                                        onBack: { store.send(.showTabsTapped) },
+                                        isDraggingBack: $isDraggingBack
+                                    ).dragCompletionChanged { completion in
+                                        withAnimation(.easeInOut(duration: 0.5)) {
+                                            dragCompletion = completion
+                                        }
+                                    })
+                                }
                                 .id(currentTab.id)
 
                             // Web view image overlay for smooth matched geometry

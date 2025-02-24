@@ -24,6 +24,7 @@ struct Main {
         case destination(PresentationAction<Destination.Action>)
         case websiteMetadataFetched(BrowserTab.ID, WebsiteMetadata)
         case webViewNavigationChanged(BrowserTab.ID, WebViewNavigationPhase)
+        case historyChanged(BrowserTab.ID, Bool)
         case receivedTabSnapshot(id: BrowserTab.ID, Image, URL)
         case brandColorChange(BrandColorRegion, Color, BrowserTab.ID)
         case dismissSnapshotOverlay
@@ -65,17 +66,20 @@ struct Main {
                 switch phase {
                 case let .started(url):
                     state.tabs[id: tabId]?.url = url
-                case let .urlChanged(url, hasPreviousHistory: hasPreviousHistory):
-                    print("Navigation url changed hasPreviousHistory: \(hasPreviousHistory)")
+                case let .urlChanged(url):
                     state.tabs[id: tabId]?.url = url
-                    state.tabs[id: tabId]?.hasPreviousHistory = hasPreviousHistory
                 }
                 return .run { _ in
-                    switch phase {
-                    case let .started(url), let .urlChanged(url, hasPreviousHistory: _):
-                        try await historyArchive.store(item: HistoryItem(query: SearchQuery(url.absoluteString), type: .website))
-                    }
+//                    switch phase {
+//                    case let .started(url), let .urlChanged(url):
+                    // try await historyArchive.store(item: HistoryItem(query: SearchQuery(url.absoluteString), type: .website))
+//                    }
                 }
+
+            case let .historyChanged(tabId, hasHistory):
+                print("History changed hasHistory: \(hasHistory)")
+                state.tabs[id: tabId]?.hasPreviousHistory = hasHistory
+                return .none
 
             case .showTabsTapped:
                 state.currentTabId = nil

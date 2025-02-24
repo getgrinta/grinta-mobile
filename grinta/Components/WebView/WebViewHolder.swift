@@ -33,10 +33,9 @@ final class WebViewHolder: ObservableObject {
         // webView.customUserAgent = "Grinta/0.1.0"
 
         // Set up the refresh control.
-         let refreshControl = UIRefreshControl()
+        let refreshControl = UIRefreshControl()
         refreshControl.addTarget(coordinator, action: #selector(WebView.Coordinator.handleRefresh(_:)), for: .valueChanged)
-         webView.scrollView.refreshControl = refreshControl
-         
+        webView.scrollView.refreshControl = refreshControl
 
         webViews[tabId] = webView
         return webView
@@ -67,5 +66,42 @@ final class WebViewHolder: ObservableObject {
         let userScript = WKUserScript(source: script, injectionTime: .atDocumentEnd, forMainFrameOnly: true)
         configuration.userContentController.addUserScript(userScript)
         configuration.userContentController.add(messageHandler, name: UserHandler.urlChanged.rawValue)
+
+        let historySource = """
+        (function() {
+            function sendHistoryChange() {
+                window.webkit.messageHandlers.historyChanged.postMessage({
+                    url: window.location.href,
+                    state: history.state
+                });
+            }
+
+            // Override pushState.
+            var originalPushState = history.pushState;
+            history.pushState = function() {
+                originalPushState.apply(history, arguments);
+                sendHistoryChange();
+            };
+
+            // Override replaceState.
+            var originalReplaceState = history.replaceState;
+            history.replaceState = function() {
+                originalReplaceState.apply(history, arguments);
+                sendHistoryChange();
+            };
+
+            // Listen for popstate events.
+            window.addEventListener('popstate', function() {
+                sendHistoryChange();
+            });
+        })();
+        """
+        let historyUserScript = WKUserScript(source: historySource,
+                                             injectionTime: .atDocumentEnd,
+                                             forMainFrameOnly: false)
+        configuration.userContentController.addUserScript(historyUserScript)
+
+        // Register the message handler.
+        configuration.userContentController.add(messageHandler, name: UserHandler.historyChanged.rawValue)
     }
 }

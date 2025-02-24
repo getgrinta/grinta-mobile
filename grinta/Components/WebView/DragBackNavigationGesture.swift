@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct EdgeNavigationGesture: ViewModifier {
+struct DragBackNavigationGesture: ViewModifier {
     private var dragCompletionClosure: ((CGFloat) -> Void)?
     let canGoBack: Bool
     let onBack: () -> Void
@@ -9,7 +9,7 @@ struct EdgeNavigationGesture: ViewModifier {
     @Binding var isDraggingBack: Bool
 
     private var dragCompletion: CGFloat {
-        dragOffset / 100
+        min(1.0, dragOffset / 100)
     }
 
     init(
@@ -50,7 +50,7 @@ struct EdgeNavigationGesture: ViewModifier {
                             dragCompletionClosure?(1)
                             onBack()
                         } else {
-                            dragCompletionClosure?(0)
+                            dragCompletionClosure?(1)
                         }
                     }
             )

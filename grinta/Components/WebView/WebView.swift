@@ -4,7 +4,7 @@ import WebKit
 
 enum WebViewNavigationPhase {
     case started(URL)
-    case urlChanged(URL, hasPreviousHistory: Bool)
+    case urlChanged(URL)
 }
 
 struct WebView: UIViewRepresentable {
@@ -21,6 +21,7 @@ struct WebView: UIViewRepresentable {
     private var websiteMetadataClosure: (@Sendable @MainActor (WebsiteMetadata) -> Void)?
     private var snapshotClosure: (@Sendable @MainActor (Image, URL) -> Void)?
     private var navigationClosure: (@Sendable @MainActor (WebViewNavigationPhase) -> Void)?
+    private var historyClosure: (@Sendable @MainActor (_ hasHistory: Bool) -> Void)?
     private var serverRedirectClosure: (@Sendable @MainActor (URL) -> Void)?
 
     init(initialURL url: URL?, id: UUID) {
@@ -34,7 +35,8 @@ struct WebView: UIViewRepresentable {
             websiteMetadataClosure: websiteMetadataClosure,
             snapshotClosure: snapshotClosure,
             navigationClosure: navigationClosure,
-            serverRedirectClosure: serverRedirectClosure
+            serverRedirectClosure: serverRedirectClosure,
+            historyClosure: historyClosure
         )
     }
 
@@ -46,12 +48,13 @@ struct WebView: UIViewRepresentable {
         context.coordinator.websiteMetadataClosure = websiteMetadataClosure
         context.coordinator.serverRedirectClosure = serverRedirectClosure
         context.coordinator.brandColorClosures = brandColorClosures
+        context.coordinator.historyClosure = historyClosure
         context.coordinator.webView = webView
         webView.navigationDelegate = context.coordinator
 
         // TODO: Redo this logic - we need to store last url for a _tab_, not the WebView...
         if let url, let webViewURL = webView.url, url.isEquivalent(to: webViewURL) == false {
-            webView.load(URLRequest(url: url))
+            // webView.load(URLRequest(url: url))
         } else if let url, webView.url == nil {
             webView.load(URLRequest(url: url))
         }
@@ -81,6 +84,7 @@ struct WebView: UIViewRepresentable {
         context.coordinator.snapshotClosure = snapshotClosure
         context.coordinator.websiteMetadataClosure = websiteMetadataClosure
         context.coordinator.brandColorClosures = brandColorClosures
+        context.coordinator.historyClosure = historyClosure
     }
 
     final class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
@@ -89,6 +93,7 @@ struct WebView: UIViewRepresentable {
         var snapshotClosure: (@Sendable @MainActor (Image, URL) -> Void)?
         var navigationClosure: (@Sendable @MainActor (WebViewNavigationPhase) -> Void)?
         var serverRedirectClosure: (@Sendable @MainActor (URL) -> Void)?
+        var historyClosure: (@Sendable @MainActor (_ hasHistory: Bool) -> Void)?
 
         var lastUILoadedURL: URL?
         var token: NSKeyValueObservation?
@@ -131,7 +136,7 @@ struct WebView: UIViewRepresentable {
 
                         lastEmittedURL = newURL
                         self.lastUILoadedURL = newURL
-                        self.navigationClosure?(.urlChanged(newURL, hasPreviousHistory: webView.backForwardList.backItem != nil))
+                        self.navigationClosure?(.urlChanged(newURL))
                     }
                 }
             }
@@ -146,24 +151,27 @@ struct WebView: UIViewRepresentable {
             websiteMetadataClosure: (@Sendable @MainActor (WebsiteMetadata) -> Void)?,
             snapshotClosure: (@Sendable @MainActor (Image, URL) -> Void)?,
             navigationClosure: (@Sendable @MainActor (WebViewNavigationPhase) -> Void)?,
-            serverRedirectClosure: (@Sendable @MainActor (URL) -> Void)?
+            serverRedirectClosure: (@Sendable @MainActor (URL) -> Void)?,
+            historyClosure: (@Sendable @MainActor (_ hasHistory: Bool) -> Void)?
         ) {
             self.brandColorClosures = brandColorClosures
             self.websiteMetadataClosure = websiteMetadataClosure
             self.snapshotClosure = snapshotClosure
             self.navigationClosure = navigationClosure
             self.serverRedirectClosure = serverRedirectClosure
+            self.historyClosure = historyClosure
         }
 
         func dismantle() {
             urlObserver?.invalidate()
         }
 
-        @objc func handleRefresh(_ refreshControl: UIRefreshControl) {
+        @objc func handleRefresh(_: UIRefreshControl) {
             webView?.reload()
         }
 
-        func webView(_ webView: WKWebView, didStartProvisionalNavigation _: WKNavigation!) {
+        func webView(_ webView: WKWebView, didStartProvisionalNavigation _: WKNavigation!) { historyClosure?(webView.backForwardList.backList.isEmpty == false)
+
             if let url = webView.url {
                 navigationClosure?(.started(url))
             }
@@ -203,6 +211,9 @@ struct WebView: UIViewRepresentable {
                 navigationClosure?(.started(url))
             }
 
+            print("Calling history closure is empty: \(webView.backForwardList.backList.isEmpty)")
+            historyClosure?(webView.backForwardList.backList.isEmpty == false)
+
             // Take snapshot and update colors
             Task { @MainActor [snapshotClosure] in
                 try await Task.sleep(for: .milliseconds(500))
@@ -235,7 +246,9 @@ struct WebView: UIViewRepresentable {
                 }
             case .source:
                 handleSourceUserMessage(message: message)
-            default:
+            case .historyChanged:
+                historyClosure?(webView?.backForwardList.backList.isEmpty == false)
+            case .none:
                 print("Unknown user handler called: \(message.name)")
             }
         }
@@ -324,6 +337,12 @@ extension WebView {
         return copy
     }
 
+    func onHistoryChange(closure: @escaping @Sendable @MainActor (Bool) -> Void) -> Self {
+        var copy = self
+        copy.historyClosure = closure
+        return copy
+    }
+
     func onNavigationFinished(closure: @escaping @Sendable @MainActor (URL) -> Void) -> Self {
         var copy = self
         copy.onNavigationFinished = closure
@@ -334,4 +353,5 @@ extension WebView {
 enum UserHandler: String {
     case source
     case urlChanged
+    case historyChanged
 }

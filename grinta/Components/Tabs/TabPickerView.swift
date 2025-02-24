@@ -39,6 +39,7 @@ struct TabPickerView: View {
                                 .clipShape(RoundedRectangle(cornerRadius: 12))
                             }
                             .opacity(contentOpacity)
+                            .animation(.easeInOut, value: UUID())
                             .if(applyMatchedGeometry) {
                                 $0.matchedGeometryEffect(id: tab.id, in: namespace)
                             }
