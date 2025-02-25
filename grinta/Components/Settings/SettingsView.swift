@@ -6,21 +6,30 @@ struct SettingsView: View {
     let store: StoreOf<Settings>
 
     var body: some View {
-        ScrollView {
-            HStack {
-                Button {
+        VStack(spacing: 16) {
+            Text("Current Website")
+                .font(.headline)
+                .foregroundStyle(Color.neutral700)
+            
+            HStack(spacing: 12) {
+                RoundedButton {
                     store.send(.shareCurrentWebsiteTapped)
                 } label: {
                     Image(systemSymbol: .squareAndArrowUp)
+                        .font(.body)
+                        .foregroundStyle(Color.neutral700)
                 }
-
-                Button {
+                
+                RoundedButton {
                     store.send(.copyCurrentWebsiteURLTapped)
                 } label: {
                     Image(systemSymbol: .link)
+                        .font(.body)
+                        .foregroundStyle(Color.neutral700)
                 }
             }
         }
+        .padding(.vertical, 32)
     }
 }
 

@@ -2,12 +2,12 @@ import ComposableArchitecture
 
 @Reducer
 struct Settings {
-    struct State {
+    struct State: Equatable {
         let setting = true
     }
 
     enum Action {
-        enum Delegate {
+        enum Delegate: Equatable {
             case shareCurrentWebsite
             case copyCurrentWebsiteURL
         }
@@ -15,5 +15,20 @@ struct Settings {
         case shareCurrentWebsiteTapped
         case copyCurrentWebsiteURLTapped
         case delegate(Delegate)
+    }
+    
+    var body: some Reducer<State, Action> {
+        Reduce { state, action in
+            switch action {
+            case .shareCurrentWebsiteTapped:
+                return .send(.delegate(.shareCurrentWebsite))
+                
+            case .copyCurrentWebsiteURLTapped:
+                return .send(.delegate(.copyCurrentWebsiteURL))
+                
+            case .delegate:
+                return .none
+            }
+        }
     }
 }
