@@ -166,6 +166,9 @@ struct Main {
                     state.currentTabId = tab.id
                     state.lastSelectedTabId = tab.id
                     return .none
+
+                case let .zoomChanged(zoomFactor):
+                    return .none
                 }
 
             case let .magicSheet(action):

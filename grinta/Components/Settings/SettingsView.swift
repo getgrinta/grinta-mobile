@@ -37,6 +37,31 @@ struct SettingsView: View {
                                 .foregroundStyle(Color.neutral700)
                             }
                         }
+
+                        RoundedView {
+                            HStack(spacing: 8) {
+                                Button {
+                                    store.send(.decreaseZoom)
+                                } label: {
+                                    Image(systemSymbol: .minus)
+                                        .font(.body)
+                                        .foregroundStyle(Color.neutral700)
+                                }
+
+                                Text(store.zoomLevel.displayText)
+                                    .font(.footnote.weight(.medium))
+                                    .foregroundStyle(Color.neutral700)
+
+                                Button {
+                                    store.send(.increaseZoom)
+                                } label: {
+                                    Image(systemSymbol: .plus)
+                                        .font(.body)
+                                        .foregroundStyle(Color.neutral700)
+                                }
+                            }
+                            .padding(.horizontal, 4)
+                        }
                     }
                 }
 
