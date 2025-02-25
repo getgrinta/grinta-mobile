@@ -7,12 +7,8 @@ struct SettingsView: View {
 
     var body: some View {
         VStack(spacing: 16) {
-            if store.hasCurrentTab {
-                Text("Current Website")
-                    .font(.headline)
-                    .foregroundStyle(Color.neutral700)
-
-                HStack(spacing: 12) {
+            HStack(spacing: 12) {
+                if store.hasCurrentTab {
                     RoundedButton {
                         store.send(.shareCurrentWebsiteTapped)
                     } label: {
@@ -28,25 +24,26 @@ struct SettingsView: View {
                             .font(.body)
                             .foregroundStyle(Color.neutral700)
                     }
-                }
-            }
 
-            Text("Browser Settings")
-                .font(.headline)
-                .foregroundStyle(Color.neutral700)
-
-            RoundedView {
-                Button {
-                    store.send(.setIncognitoMode(!store.isIncognitoMode))
-                } label: {
-                    HStack {
-                        Image(systemSymbol: store.isIncognitoMode ? .eyesInverse : .eyes)
-                            .font(.body)
-                        Text("Incognito Mode")
+                    RoundedView {
+                        Button {
+                            store.send(.setIncognitoMode(!store.isIncognitoMode))
+                        } label: {
+                            HStack {
+                                Image(systemSymbol: store.isIncognitoMode ? .eyesInverse : .eyes)
+                                    .font(.body)
+                            }
+                            .foregroundStyle(Color.neutral700)
+                        }
                     }
-                    .foregroundStyle(Color.neutral700)
                 }
             }
+
+            Spacer()
+
+            Text(AppVersion.versionString)
+                .font(.footnote)
+                .foregroundStyle(Color.neutral500)
         }
         .padding(.vertical, 32)
         .sheet(isPresented: $store.isSharePresented.sending(\.setSharePresented)) {
