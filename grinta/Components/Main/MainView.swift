@@ -108,7 +108,6 @@ struct MainView: View {
                             .presentationBackground(.thinMaterial)
                             .presentationDragIndicator(.hidden)
                             .presentationCornerRadius(40)
-                            .presentationBackgroundInteraction(.enabled)
                     }
             }
             .ignoresSafeArea(.all)

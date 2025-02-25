@@ -98,7 +98,14 @@ struct Main {
                 return .none
 
             case .showTabsTapped:
-                state.currentTabId = nil
+                if let currentTab = state.currentTab {
+                    state.destination = .settings(
+                        Settings.State(
+                            url: currentTab.url,
+                            snapshot: currentTab.currentSnapshot
+                        )
+                    )
+                }
                 return .none
 
             case let .brandColorChange(region, color, tabId):
@@ -154,7 +161,9 @@ struct Main {
                     return .none
 
                 case .delegate(.openSettings):
-                    state.destination = .settings(Settings.State())
+                    if let url = state.currentTab?.url {
+                        state.destination = .settings(Settings.State(url: url))
+                    }
                     return .none
 
                 case .delegate(.openTabs):
