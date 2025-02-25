@@ -23,7 +23,8 @@ struct MainView: View {
                         TabPickerView(
                             namespace: namespace,
                             tabs: store.tabs.elements,
-                            applyMatchedGeometry: isDraggingBack == false
+                            lastSelectedTabId: store.lastSelectedTabId,
+                            applyMatchedGeometry: true
                         )
                         .tabSelected { tabId in
                             store.send(.selectTab(tabId), animation: .easeInOut)

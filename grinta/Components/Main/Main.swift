@@ -42,6 +42,7 @@ struct Main {
 
         var tabs: IdentifiedArrayOf<BrowserTab> = []
         var currentTabId: BrowserTab.ID?
+        var lastSelectedTabId: BrowserTab.ID?
         var displaySnapshotOverlay = false
         var showSheet = true
         var settingsPresented = false
@@ -133,6 +134,7 @@ struct Main {
 
             case let .selectTab(tabId):
                 state.currentTabId = tabId
+                state.lastSelectedTabId = tabId
                 state.displaySnapshotOverlay = true
 
                 // TODO: Add cancellable. might backfire when
@@ -162,6 +164,7 @@ struct Main {
                     let tab = BrowserTab(url: URLConstants.help, isIncognito: false)
                     state.tabs.append(tab)
                     state.currentTabId = tab.id
+                    state.lastSelectedTabId = tab.id
                     return .none
                 }
 
@@ -171,6 +174,7 @@ struct Main {
                     let tab = BrowserTab(url: url, isIncognito: state.isIncognitoMode)
                     state.tabs.append(tab)
                     state.currentTabId = tab.id
+                    state.lastSelectedTabId = tab.id
                     return .none
 
                 case .delegate(.openSettings):

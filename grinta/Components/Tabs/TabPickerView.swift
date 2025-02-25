@@ -8,11 +8,18 @@ struct TabPickerView: View {
 
     let namespace: Namespace.ID
     let tabs: [BrowserTab]
+    let lastSelectedTabId: BrowserTab.ID?
     let applyMatchedGeometry: Bool
 
-    init(namespace: Namespace.ID, tabs: [BrowserTab], applyMatchedGeometry: Bool) {
+    init(
+        namespace: Namespace.ID,
+        tabs: [BrowserTab],
+        lastSelectedTabId: BrowserTab.ID? = nil,
+        applyMatchedGeometry: Bool
+    ) {
         self.namespace = namespace
         self.tabs = tabs
+        self.lastSelectedTabId = lastSelectedTabId
         self.applyMatchedGeometry = applyMatchedGeometry
     }
 
@@ -39,6 +46,12 @@ struct TabPickerView: View {
                                     TabContent(tab: tab, width: halfWidth)
                                 }
                                 .clipShape(RoundedRectangle(cornerRadius: 12))
+                                .overlay {
+                                    if tab.id == lastSelectedTabId {
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .stroke(Color.vibrantBlue, lineWidth: 3)
+                                    }
+                                }
                             }
                             .opacity(contentOpacity)
                             .animation(.easeInOut, value: UUID())
@@ -152,5 +165,5 @@ extension TabPickerView {
         return tabs
     }()
 
-    TabPickerView(namespace: ns, tabs: tabs, applyMatchedGeometry: true)
+    TabPickerView(namespace: ns, tabs: tabs, lastSelectedTabId: tabs[0].id, applyMatchedGeometry: true)
 }
