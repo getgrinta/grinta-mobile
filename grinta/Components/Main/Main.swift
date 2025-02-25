@@ -45,6 +45,7 @@ struct Main {
         var displaySnapshotOverlay = false
         var showSheet = true
         var settingsPresented = false
+        var isIncognitoMode = false
 
         var currentTab: BrowserTab? {
             guard let currentTabId else { return nil }
@@ -149,13 +150,14 @@ struct Main {
                     try await tabPersistence.saveTabs(tabs.elements)
                 }
 
-            case .destination:
+            case let .destination(.presented(.settings(.delegate(.incognitoModeChanged(isOn))))):
+                state.isIncognitoMode = isOn
                 return .none
 
             case let .magicSheet(action):
                 switch action {
                 case let .delegate(.openURL(url)):
-                    let tab = BrowserTab(id: UUID(), url: url)
+                    let tab = BrowserTab(url: url, isIncognito: state.isIncognitoMode)
                     state.tabs.append(tab)
                     state.currentTabId = tab.id
                     return .none
@@ -186,6 +188,9 @@ struct Main {
 
             case .dismissSnapshotOverlay:
                 state.displaySnapshotOverlay = false
+                return .none
+
+            case .destination:
                 return .none
             }
         }

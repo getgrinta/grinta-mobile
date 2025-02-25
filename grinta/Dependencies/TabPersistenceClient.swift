@@ -53,7 +53,8 @@ extension TabPersistenceClient: DependencyKey {
         return Self(
             saveTabs: { tabs in
                 try initializeDirectories()
-                let encodedTabData = try JSONEncoder().encode(tabs)
+                let nonIncognitoTabs = tabs.filter { !$0.isIncognito }
+                let encodedTabData = try JSONEncoder().encode(nonIncognitoTabs)
                 try encodedTabData.write(to: tabsURL)
             },
             loadTabs: loadTabs,

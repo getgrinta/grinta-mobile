@@ -10,6 +10,7 @@ struct BrowserTab: Identifiable, Hashable, Codable {
     var topBrandColor: Color = .clear
     var bottomBrandColor: Color = .clear
     let creationTime: Date
+    var isIncognito: Bool = false
 
     private(set) var snapshotPerURL: [URL: Image] = [:]
 
@@ -25,11 +26,13 @@ struct BrowserTab: Identifiable, Hashable, Codable {
         case topBrandColor
         case bottomBrandColor
         case creationTime
+        case isIncognito
     }
 
-    init(id: UUID = UUID(), url: URL) {
+    init(id: UUID = UUID(), url: URL, isIncognito: Bool = false) {
         self.id = id
         self.url = url
+        self.isIncognito = isIncognito
         creationTime = Date()
         title = url.absoluteString
     }
@@ -47,6 +50,7 @@ struct BrowserTab: Identifiable, Hashable, Codable {
         hasPreviousHistory = false
         wasLoaded = false
         creationTime = try container.decode(Date.self, forKey: .creationTime)
+        isIncognito = try container.decodeIfPresent(Bool.self, forKey: .isIncognito) ?? false
 
         if let topColorComponents = try container.decodeIfPresent([CGFloat].self, forKey: .topBrandColor) {
             topBrandColor = Color(.sRGB, red: topColorComponents[0], green: topColorComponents[1], blue: topColorComponents[2], opacity: topColorComponents[3])

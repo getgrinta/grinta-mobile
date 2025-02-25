@@ -6,12 +6,12 @@ final class WebViewHolder: ObservableObject {
     static let shared = WebViewHolder()
     private var webViews: [BrowserTab.ID: WKWebView] = [:]
 
-    func webView(for tabId: BrowserTab.ID, messageHandler: any WKScriptMessageHandler, coordinator: WebView.Coordinator) -> WKWebView {
+    func webView(for tabId: BrowserTab.ID, messageHandler: any WKScriptMessageHandler, coordinator: WebView.Coordinator, isIncognito: Bool = false) -> WKWebView {
         if let view = webViews[tabId] {
             return view
         }
 
-        let configuration = createConfiguration(messageHandler: messageHandler)
+        let configuration = createConfiguration(messageHandler: messageHandler, isIncognito: isIncognito)
 
         setupNavigationHandler(configuration: configuration, messageHandler: messageHandler)
 
@@ -31,10 +31,11 @@ final class WebViewHolder: ObservableObject {
         return webView
     }
 
-    private func createConfiguration(messageHandler: any WKScriptMessageHandler) -> WKWebViewConfiguration {
+    private func createConfiguration(messageHandler: any WKScriptMessageHandler, isIncognito: Bool) -> WKWebViewConfiguration {
         let configuration = WKWebViewConfiguration()
         configuration.allowsInlineMediaPlayback = false
         configuration.mediaTypesRequiringUserActionForPlayback = .all
+        configuration.websiteDataStore = isIncognito ? .nonPersistent() : .default()
 
         let sourceScript = WKUserScript(
             source: """

@@ -36,46 +36,50 @@ struct MainView: View {
 
                     if let currentTab = store.currentTab {
                         ZStack {
-                            WebView(initialURL: currentTab.url, id: currentTab.id)
-                                .onBrandColorChange(region: .top(20)) { color in
-                                    store.send(.brandColorChange(.top, color, currentTab.id), animation: .easeInOut)
-                                }
-                                .onBrandColorChange(region: .bottom(20)) { color in
-                                    store.send(.brandColorChange(.bottom, color, currentTab.id), animation: .easeInOut)
-                                }
-                                .onNavigation { phase in
-                                    store.send(.webViewNavigationChanged(currentTab.id, phase))
-                                }
-                                .onSnapshot { image, url in
-                                    store.send(.receivedTabSnapshot(id: currentTab.id, image, url))
-                                }
-                                .onNavigationFinished { url in
-                                    store.send(.navigationFinished(currentTab.id, url))
-                                }
-                                .onHistoryChange { hasHistory in
-                                    store.send(.historyChanged(currentTab.id, hasHistory))
-                                }
-                                .onWebsiteMetadata { metadata in
-                                    store.send(.websiteMetadataFetched(currentTab.id, metadata))
-                                }
-                                .if(store.displaySnapshotOverlay == false || currentTab.wasLoaded) {
-                                    $0.matchedGeometryEffect(id: currentTab.id, in: namespace)
-                                        .transition(.scale)
-                                        .animation(.easeInOut, value: currentTab.id)
-                                }
-                                .background(currentTab.topBrandColor)
-                                .if(currentTab.hasPreviousHistory == false) {
-                                    $0.modifier(DragBackNavigationGesture(
-                                        canGoBack: true,
-                                        onBack: { store.send(.showTabsTapped) },
-                                        isDraggingBack: $isDraggingBack
-                                    ).dragCompletionChanged { completion in
-                                        withAnimation(.easeInOut(duration: 0.5)) {
-                                            dragCompletion = completion
-                                        }
-                                    })
-                                }
-                                .id(currentTab.id)
+                            WebView(
+                                initialURL: currentTab.url,
+                                id: currentTab.id,
+                                isIncognito: currentTab.isIncognito
+                            )
+                            .onBrandColorChange(region: .top(20)) { color in
+                                store.send(.brandColorChange(.top, color, currentTab.id), animation: .easeInOut)
+                            }
+                            .onBrandColorChange(region: .bottom(20)) { color in
+                                store.send(.brandColorChange(.bottom, color, currentTab.id), animation: .easeInOut)
+                            }
+                            .onNavigation { phase in
+                                store.send(.webViewNavigationChanged(currentTab.id, phase))
+                            }
+                            .onSnapshot { image, url in
+                                store.send(.receivedTabSnapshot(id: currentTab.id, image, url))
+                            }
+                            .onNavigationFinished { url in
+                                store.send(.navigationFinished(currentTab.id, url))
+                            }
+                            .onHistoryChange { hasHistory in
+                                store.send(.historyChanged(currentTab.id, hasHistory))
+                            }
+                            .onWebsiteMetadata { metadata in
+                                store.send(.websiteMetadataFetched(currentTab.id, metadata))
+                            }
+                            .if(store.displaySnapshotOverlay == false || currentTab.wasLoaded) {
+                                $0.matchedGeometryEffect(id: currentTab.id, in: namespace)
+                                    .transition(.scale)
+                                    .animation(.easeInOut, value: currentTab.id)
+                            }
+                            .background(currentTab.topBrandColor)
+                            .if(currentTab.hasPreviousHistory == false) {
+                                $0.modifier(DragBackNavigationGesture(
+                                    canGoBack: true,
+                                    onBack: { store.send(.showTabsTapped) },
+                                    isDraggingBack: $isDraggingBack
+                                ).dragCompletionChanged { completion in
+                                    withAnimation(.easeInOut(duration: 0.5)) {
+                                        dragCompletion = completion
+                                    }
+                                })
+                            }
+                            .id(currentTab.id)
 
                             // Web view image overlay for smooth matched geometry
                             // in case the tab was created from storage

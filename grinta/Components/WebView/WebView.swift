@@ -10,6 +10,7 @@ enum WebViewNavigationPhase {
 struct WebView: UIViewRepresentable {
     let url: URL?
     let id: UUID
+    let isIncognito: Bool
     var onNavigationFinished: ((URL) -> Void)?
 
     enum ColorPickerRegion {
@@ -24,9 +25,10 @@ struct WebView: UIViewRepresentable {
     private var historyClosure: (@Sendable @MainActor (_ hasHistory: Bool) -> Void)?
     private var serverRedirectClosure: (@Sendable @MainActor (URL) -> Void)?
 
-    init(initialURL url: URL?, id: UUID) {
+    init(initialURL url: URL?, id: UUID, isIncognito: Bool = false) {
         self.url = url
         self.id = id
+        self.isIncognito = isIncognito
     }
 
     func makeCoordinator() -> Coordinator {
@@ -41,7 +43,12 @@ struct WebView: UIViewRepresentable {
     }
 
     func makeUIView(context: Context) -> WKWebView {
-        let webView = WebViewHolder.shared.webView(for: id, messageHandler: context.coordinator, coordinator: context.coordinator)
+        let webView = WebViewHolder.shared.webView(
+            for: id,
+            messageHandler: context.coordinator,
+            coordinator: context.coordinator,
+            isIncognito: isIncognito
+        )
 
         context.coordinator.lastUILoadedURL = url
         context.coordinator.webView = webView
