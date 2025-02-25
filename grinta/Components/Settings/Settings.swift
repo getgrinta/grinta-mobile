@@ -24,13 +24,15 @@ struct Settings {
         case copyCurrentWebsiteURLTapped
         case setSharePresented(Bool)
         case setIncognitoMode(Bool)
+        case helpTapped
         case delegate(Delegate)
     }
 
     enum Delegate: Equatable {
         case incognitoModeChanged(Bool)
+        case openHelp
     }
-
+    
     var body: some ReducerOf<Self> {
         Reduce { state, action in
             switch action {
@@ -54,6 +56,9 @@ struct Settings {
             case let .setIncognitoMode(isOn):
                 state.isIncognitoMode = isOn
                 return .send(.delegate(.incognitoModeChanged(isOn)))
+                
+            case .helpTapped:
+                return .send(.delegate(.openHelp))
 
             case .delegate:
                 return .none

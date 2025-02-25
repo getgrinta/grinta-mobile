@@ -94,7 +94,6 @@ struct Main {
                 }
 
             case let .historyChanged(tabId, hasHistory):
-                print("History changed hasHistory: \(hasHistory)")
                 state.tabs[id: tabId]?.hasPreviousHistory = hasHistory
                 return .none
 
@@ -150,9 +149,21 @@ struct Main {
                     try await tabPersistence.saveTabs(tabs.elements)
                 }
 
-            case let .destination(.presented(.settings(.delegate(.incognitoModeChanged(isOn))))):
-                state.isIncognitoMode = isOn
-                return .none
+            // Settings
+            case let .destination(.presented(.settings(.delegate(action)))):
+                switch action {
+                case let .incognitoModeChanged(isOn):
+                    state.isIncognitoMode = isOn
+                    return .none
+
+                case .openHelp:
+                    state.destination = nil
+                    state.showSheet = false
+                    let tab = BrowserTab(url: URLConstants.help, isIncognito: false)
+                    state.tabs.append(tab)
+                    state.currentTabId = tab.id
+                    return .none
+                }
 
             case let .magicSheet(action):
                 switch action {
