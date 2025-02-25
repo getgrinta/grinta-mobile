@@ -27,9 +27,9 @@ final class WebViewHolder: ObservableObject {
         refreshControl.addTarget(coordinator, action: #selector(WebView.Coordinator.handleRefresh(_:)), for: .valueChanged)
         webView.scrollView.refreshControl = refreshControl
 
-        // webView.scrollView.minimumZoomScale = 0.5
-        // webView.scrollView.maximumZoomScale = 2.0
-        // webView.scrollView.zoomScale = zoomLevel
+        webView.scrollView.minimumZoomScale = 0.5
+        webView.scrollView.maximumZoomScale = 3.0
+        webView.scrollView.zoomScale = 2.0
 
         webViews[tabId] = webView
         return webView

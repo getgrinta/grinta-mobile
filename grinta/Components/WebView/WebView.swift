@@ -25,7 +25,7 @@ struct WebView: UIViewRepresentable {
         case bottom(CGFloat)
     }
 
-    init(initialURL url: URL?, id: UUID, isIncognito: Bool = false, zoomLevel: CGFloat = 1.0) {
+    init(initialURL url: URL?, id: UUID, isIncognito: Bool = false, zoomLevel: CGFloat) {
         self.url = url
         self.id = id
         self.isIncognito = isIncognito
@@ -39,7 +39,8 @@ struct WebView: UIViewRepresentable {
             snapshotClosure: snapshotClosure,
             navigationClosure: navigationClosure,
             serverRedirectClosure: serverRedirectClosure,
-            historyClosure: historyClosure
+            historyClosure: historyClosure,
+            zoomLevel: zoomLevel
         )
     }
 
@@ -53,6 +54,7 @@ struct WebView: UIViewRepresentable {
 
         context.coordinator.lastUILoadedURL = url
         context.coordinator.webView = webView
+        context.coordinator.zoomLevel = zoomLevel
         updateContextClosures(context)
         webView.navigationDelegate = context.coordinator
 
@@ -95,6 +97,7 @@ struct WebView: UIViewRepresentable {
         var token: NSKeyValueObservation?
         var urlObserver: NSKeyValueObservation?
         var backForwardListObserver: NSKeyValueObservation?
+        var zoomLevel: CGFloat = 1.0
         private var lastBrandColorPick: Date = .distantPast
 
         unowned var webView: WKWebView? {
@@ -133,6 +136,7 @@ struct WebView: UIViewRepresentable {
                         lastEmittedURL = newURL
                         self.lastUILoadedURL = newURL
                         self.navigationClosure?(.urlChanged(newURL))
+                        self.updateZoom(webView: webView, to: self.zoomLevel)
                     }
                 }
             }
@@ -148,7 +152,8 @@ struct WebView: UIViewRepresentable {
             snapshotClosure: (@Sendable @MainActor (Image, URL) -> Void)?,
             navigationClosure: (@Sendable @MainActor (WebViewNavigationPhase) -> Void)?,
             serverRedirectClosure: (@Sendable @MainActor (URL) -> Void)?,
-            historyClosure: (@Sendable @MainActor (_ hasHistory: Bool) -> Void)?
+            historyClosure: (@Sendable @MainActor (_ hasHistory: Bool) -> Void)?,
+            zoomLevel: CGFloat
         ) {
             self.brandColorClosures = brandColorClosures
             self.websiteMetadataClosure = websiteMetadataClosure
@@ -156,6 +161,7 @@ struct WebView: UIViewRepresentable {
             self.navigationClosure = navigationClosure
             self.serverRedirectClosure = serverRedirectClosure
             self.historyClosure = historyClosure
+            self.zoomLevel = zoomLevel
         }
 
         func dismantle() {
@@ -199,6 +205,8 @@ struct WebView: UIViewRepresentable {
         }
 
         func webView(_ webView: WKWebView, didFinish _: WKNavigation!) {
+            updateZoom(webView: webView, to: zoomLevel)
+
             webView.scrollView.refreshControl?.endRefreshing()
 
             if let url = webView.url {
@@ -301,22 +309,7 @@ struct WebView: UIViewRepresentable {
         }
 
         func updateZoom(webView: WKWebView, to zoomValue: CGFloat) {
-            let js = """
-            var meta = document.querySelector('meta[name=viewport]');
-            if (meta) {
-                meta.setAttribute('content', 'width=device-width, initial-scale=\(zoomValue), minimum-scale=\(zoomValue), maximum-scale=\(zoomValue), user-scalable=yes');
-            } else {
-                meta = document.createElement('meta');
-                meta.name = 'viewport';
-                meta.content = 'width=device-width, initial-scale=\(zoomValue), minimum-scale=\(zoomValue), maximum-scale=\(zoomValue), user-scalable=yes';
-                document.head.appendChild(meta);
-            }
-            """
-            webView.evaluateJavaScript(js) { _, error in
-                if let error {
-                    print("Error updating zoom: \(error)")
-                }
-            }
+            webView.pageZoom = zoomValue
         }
     }
 }
