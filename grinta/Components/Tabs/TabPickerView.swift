@@ -34,6 +34,8 @@ struct TabPickerView: View {
                             } label: {
                                 VStack(alignment: .leading, spacing: 0) {
                                     TabHeader(tab: tab)
+                                        .background(tab.isIncognito ? Color.black : Color.neutral200)
+                                        .foregroundColor(tab.isIncognito ? .white : Color.neutral600)
                                     TabContent(tab: tab, width: halfWidth)
                                 }
                                 .clipShape(RoundedRectangle(cornerRadius: 12))
@@ -109,8 +111,6 @@ struct TabPickerView: View {
         }
         .frame(minHeight: 26)
         .padding(.leading, 6)
-        .background(Color.neutral200)
-        .foregroundStyle(Color.neutral600)
     }
 }
 

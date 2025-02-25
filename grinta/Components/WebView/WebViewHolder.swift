@@ -36,6 +36,7 @@ final class WebViewHolder: ObservableObject {
         configuration.allowsInlineMediaPlayback = false
         configuration.mediaTypesRequiringUserActionForPlayback = .all
         configuration.websiteDataStore = isIncognito ? .nonPersistent() : .default()
+        configuration.defaultWebpagePreferences.preferredContentMode = .mobile
 
         let sourceScript = WKUserScript(
             source: """

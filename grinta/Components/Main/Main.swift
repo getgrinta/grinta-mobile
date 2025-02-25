@@ -164,7 +164,7 @@ struct Main {
 
                 case .delegate(.openSettings):
                     if let url = state.currentTab?.url {
-                        state.destination = .settings(Settings.State(url: url))
+                        state.destination = .settings(Settings.State(url: url, isIncognitoMode: state.isIncognitoMode))
                     }
                     return .none
 

@@ -8,12 +8,13 @@ struct MainView: View {
     @State private var isDraggingBack = false
     @Namespace private var namespace
     @State var dragCompletion: CGFloat = 1
+    @Environment(\.colorScheme) var colorScheme
 
     var body: some View {
         GeometryReader { proxy in
             VStack(spacing: 0) {
                 StatusBarCoverView(
-                    color: store.currentTab?.topBrandColor ?? .neutral300,
+                    color: (store.currentTab?.isIncognito ?? false) ? .black : (store.currentTab?.topBrandColor ?? .neutral300),
                     safeAreaInsets: proxy.safeAreaInsets
                 )
 
@@ -67,7 +68,7 @@ struct MainView: View {
                                     .transition(.scale)
                                     .animation(.easeInOut, value: currentTab.id)
                             }
-                            .background(currentTab.topBrandColor)
+                            // .background(currentTab.topBrandColor)
                             .if(currentTab.hasPreviousHistory == false) {
                                 $0.modifier(DragBackNavigationGesture(
                                     canGoBack: true,
@@ -102,7 +103,7 @@ struct MainView: View {
                     length - proxy.safeAreaInsets.bottom
                 }
 
-                BottomBarBackgroundView(color: store.currentTab?.bottomBrandColor ?? .neutral400)
+                BottomBarBackgroundView(color: (store.currentTab?.isIncognito ?? false) ? .black : (store.currentTab?.bottomBrandColor ?? .neutral400))
             }
             .sheet(isPresented: $store.showSheet) {
                 MagicSheetView(store: store.scope(state: \.magicSheet, action: \.magicSheet))
@@ -113,6 +114,7 @@ struct MainView: View {
                             .presentationDragIndicator(.hidden)
                             .presentationCornerRadius(40)
                     }
+                    .preferredColorScheme((store.currentTab?.isIncognito ?? false) ? .dark : colorScheme)
             }
             .ignoresSafeArea(.all)
         }
