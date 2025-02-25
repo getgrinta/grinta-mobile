@@ -7,6 +7,13 @@ struct Settings {
     }
 
     enum Action {
-        case dummy
+        enum Delegate {
+            case shareCurrentWebsite
+            case copyCurrentWebsiteURL
+        }
+
+        case shareCurrentWebsiteTapped
+        case copyCurrentWebsiteURLTapped
+        case delegate(Delegate)
     }
 }

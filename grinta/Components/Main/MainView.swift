@@ -105,6 +105,10 @@ struct MainView: View {
                     .sheet(item: $store.scope(state: \.destination?.settings, action: \.destination.settings)) { store in
                         SettingsView(store: store)
                             .presentationDetents([.height(200)])
+                            .presentationBackground(.thinMaterial)
+                            .presentationDragIndicator(.hidden)
+                            .presentationCornerRadius(40)
+                            .presentationBackgroundInteraction(.enabled)
                     }
             }
             .ignoresSafeArea(.all)
