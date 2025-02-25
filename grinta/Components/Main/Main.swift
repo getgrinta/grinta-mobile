@@ -34,6 +34,8 @@ struct Main {
         case onAppear
         case loadedTabs([BrowserTab])
         case webViewLoadingProgressChanged(Double)
+        case hideLoading
+        case resetLoadingProgress
     }
 
     @ObservableState
@@ -135,6 +137,28 @@ struct Main {
 
             case let .webViewLoadingProgressChanged(progress):
                 state.magicSheet.loadingProgress = progress
+
+                if progress > 0 {
+                    state.magicSheet.isLoading = true
+                }
+
+                if progress >= 1.0 {
+                    return .run { send in
+                        try await Task.sleep(for: .milliseconds(500))
+                        await send(.hideLoading)
+                    }
+                }
+                return .none
+
+            case .hideLoading:
+                state.magicSheet.isLoading = false
+                return .run { send in
+                    try await Task.sleep(for: .seconds(1))
+                    await send(.resetLoadingProgress)
+                }
+
+            case .resetLoadingProgress:
+                state.magicSheet.loadingProgress = 0
                 return .none
 
             case let .selectTab(tabId):

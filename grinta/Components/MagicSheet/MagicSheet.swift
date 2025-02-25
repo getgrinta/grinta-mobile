@@ -22,6 +22,7 @@ struct MagicSheet {
         var isRecognizingVoice = false
         var isSpeechRecognitionAvailable = false
         var loadingProgress: Double = 0
+        var isLoading = false
 
         enum Field: Hashable, Sendable {
             case search
@@ -35,10 +36,6 @@ struct MagicSheet {
 
         var searchBarContainsText: Bool {
             !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        }
-
-        var isLoading: Bool {
-            loadingProgress > 0 && loadingProgress < 1
         }
     }
 
