@@ -9,6 +9,7 @@ struct Settings {
         var url: URL?
         var snapshot: Image?
         var isIncognitoMode = false
+        var isDesktopSiteMode = false
         var zoomLevel: ZoomLevel = .default
 
         var shareItems: [Any] {
@@ -51,6 +52,7 @@ struct Settings {
         case copyCurrentWebsiteURLTapped
         case setSharePresented(Bool)
         case setIncognitoMode(Bool)
+        case setDesktopSiteMode(Bool)
         case increaseZoom
         case decreaseZoom
         case helpTapped
@@ -58,7 +60,7 @@ struct Settings {
     }
 
     enum Delegate: Equatable {
-        case incognitoModeChanged(Bool)
+        case desktopSiteModeChanged(Bool)
         case openHelp
         case zoomChanged(ZoomLevel)
     }
@@ -85,7 +87,11 @@ struct Settings {
 
             case let .setIncognitoMode(isOn):
                 state.isIncognitoMode = isOn
-                return .send(.delegate(.incognitoModeChanged(isOn)))
+                return .none
+
+            case let .setDesktopSiteMode(isOn):
+                state.isDesktopSiteMode = isOn
+                return .send(.delegate(.desktopSiteModeChanged(isOn)))
 
             case .increaseZoom:
                 state.zoomLevel = state.zoomLevel.next

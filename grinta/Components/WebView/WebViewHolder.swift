@@ -6,12 +6,12 @@ final class WebViewHolder: ObservableObject {
     static let shared = WebViewHolder()
     private var webViews: [BrowserTab.ID: WKWebView] = [:]
 
-    func webView(for tabId: BrowserTab.ID, messageHandler: any WKScriptMessageHandler, coordinator: WebView.Coordinator, isIncognito: Bool = false, zoomLevel _: CGFloat = 1.0) -> WKWebView {
+    func webView(for tabId: BrowserTab.ID, messageHandler: any WKScriptMessageHandler, coordinator: WebView.Coordinator, isIncognito: Bool, isDesktopSite: Bool, zoomLevel _: CGFloat = 1.0) -> WKWebView {
         if let view = webViews[tabId] {
             return view
         }
 
-        let configuration = createConfiguration(messageHandler: messageHandler, isIncognito: isIncognito)
+        let configuration = createConfiguration(messageHandler: messageHandler, isIncognito: isIncognito, isDesktopSite: isDesktopSite)
 
         setupNavigationHandler(configuration: configuration, messageHandler: messageHandler)
 
@@ -27,20 +27,18 @@ final class WebViewHolder: ObservableObject {
         refreshControl.addTarget(coordinator, action: #selector(WebView.Coordinator.handleRefresh(_:)), for: .valueChanged)
         webView.scrollView.refreshControl = refreshControl
 
-        webView.scrollView.minimumZoomScale = 0.5
-        webView.scrollView.maximumZoomScale = 3.0
-        webView.scrollView.zoomScale = 2.0
+        webView.customUserAgent = isDesktopSite ? "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.96 Safari/537.36" : nil
 
         webViews[tabId] = webView
         return webView
     }
 
-    private func createConfiguration(messageHandler: any WKScriptMessageHandler, isIncognito: Bool) -> WKWebViewConfiguration {
+    private func createConfiguration(messageHandler: any WKScriptMessageHandler, isIncognito: Bool, isDesktopSite: Bool) -> WKWebViewConfiguration {
         let configuration = WKWebViewConfiguration()
         configuration.allowsInlineMediaPlayback = false
         configuration.mediaTypesRequiringUserActionForPlayback = .all
         configuration.websiteDataStore = isIncognito ? .nonPersistent() : .default()
-        configuration.defaultWebpagePreferences.preferredContentMode = .mobile
+        configuration.defaultWebpagePreferences.preferredContentMode = isDesktopSite ? .desktop : .mobile
 
         let sourceScript = WKUserScript(
             source: """

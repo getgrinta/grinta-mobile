@@ -42,6 +42,7 @@ struct MainView: View {
                                 initialURL: currentTab.url,
                                 id: currentTab.id,
                                 isIncognito: currentTab.isIncognito,
+                                isDesktopSite: currentTab.isDesktopSite,
                                 zoomLevel: CGFloat(currentTab.zoomLevel.rawValue) / 100.0
                             )
                             .onBrandColorChange(region: .top(20)) { color in

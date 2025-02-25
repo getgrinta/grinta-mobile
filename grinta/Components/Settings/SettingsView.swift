@@ -39,6 +39,18 @@ struct SettingsView: View {
                         }
 
                         RoundedView {
+                            Button {
+                                store.send(.setDesktopSiteMode(!store.isDesktopSiteMode))
+                            } label: {
+                                HStack {
+                                    Image(systemSymbol: store.isDesktopSiteMode ? .desktopcomputer : .iphone)
+                                        .font(.body)
+                                }
+                                .foregroundStyle(Color.neutral700)
+                            }
+                        }
+
+                        RoundedView {
                             HStack(spacing: 8) {
                                 Button {
                                     store.send(.decreaseZoom)

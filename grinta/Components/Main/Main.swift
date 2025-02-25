@@ -183,8 +183,16 @@ struct Main {
             // Settings
             case let .destination(.presented(.settings(.delegate(action)))):
                 switch action {
-                case let .incognitoModeChanged(isOn):
-                    state.isIncognitoMode = isOn
+                case let .desktopSiteModeChanged(isOn):
+                    if let currentTabId = state.currentTabId {
+                        state.tabs[id: currentTabId]?.isDesktopSite = isOn
+                    }
+                    return .none
+
+                case let .zoomChanged(zoomLevel):
+                    if let currentTabId = state.currentTabId {
+                        state.tabs[id: currentTabId]?.zoomLevel = zoomLevel
+                    }
                     return .none
 
                 case .openHelp:
@@ -194,12 +202,6 @@ struct Main {
                     state.tabs.append(tab)
                     state.currentTabId = tab.id
                     state.lastSelectedTabId = tab.id
-                    return .none
-
-                case let .zoomChanged(zoomLevel):
-                    if let currentTabId = state.currentTabId {
-                        state.tabs[id: currentTabId]?.zoomLevel = zoomLevel
-                    }
                     return .none
                 }
 

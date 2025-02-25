@@ -5,13 +5,14 @@ struct BrowserTab: Identifiable, Hashable, Codable {
     var url: URL
     var title: String
     var metadata: WebsiteMetadata?
-    var hasPreviousHistory: Bool = false
+    var hasPreviousHistory = false
     var zoomLevel: Settings.ZoomLevel
-    var wasLoaded: Bool = false
+    var wasLoaded = false
     var topBrandColor: Color = .clear
     var bottomBrandColor: Color = .clear
     let creationTime: Date
-    var isIncognito: Bool = false
+    var isIncognito = false
+    var isDesktopSite = false
 
     private(set) var snapshotPerURL: [URL: Image] = [:]
 
@@ -28,17 +29,20 @@ struct BrowserTab: Identifiable, Hashable, Codable {
         case bottomBrandColor
         case creationTime
         case zoomLevel
+        case isDesktopSite
     }
 
     init(
         id: UUID = UUID(),
         url: URL,
         isIncognito: Bool = false,
+        isDesktopSite: Bool = false,
         zoomLevel: Settings.ZoomLevel = .default
     ) {
         self.id = id
         self.url = url
         self.isIncognito = isIncognito
+        self.isDesktopSite = isDesktopSite
         self.zoomLevel = zoomLevel
         creationTime = Date()
         title = url.absoluteString
@@ -71,6 +75,8 @@ struct BrowserTab: Identifiable, Hashable, Codable {
         } else {
             zoomLevel = .default
         }
+
+        isDesktopSite = try container.decodeIfPresent(Bool.self, forKey: .isDesktopSite) ?? false
     }
 
     func encode(to encoder: Encoder) throws {
@@ -90,6 +96,7 @@ struct BrowserTab: Identifiable, Hashable, Codable {
         }
 
         try container.encode(zoomLevel.rawValue, forKey: .zoomLevel)
+        try container.encode(isDesktopSite, forKey: .isDesktopSite)
     }
 
     static func == (lhs: BrowserTab, rhs: BrowserTab) -> Bool {

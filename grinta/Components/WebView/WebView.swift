@@ -11,6 +11,7 @@ struct WebView: UIViewRepresentable {
     let url: URL?
     let id: UUID
     let isIncognito: Bool
+    let isDesktopSite: Bool
     let zoomLevel: CGFloat
     var onNavigationFinished: ((URL) -> Void)?
     var brandColorClosures: [(region: ColorPickerRegion, closure: @Sendable @MainActor (Color) -> Void)] = []
@@ -26,10 +27,11 @@ struct WebView: UIViewRepresentable {
         case bottom(CGFloat)
     }
 
-    init(initialURL url: URL?, id: UUID, isIncognito: Bool = false, zoomLevel: CGFloat) {
+    init(initialURL url: URL?, id: UUID, isIncognito: Bool, isDesktopSite: Bool, zoomLevel: CGFloat) {
         self.url = url
         self.id = id
         self.isIncognito = isIncognito
+        self.isDesktopSite = isDesktopSite
         self.zoomLevel = zoomLevel
     }
 
@@ -42,7 +44,8 @@ struct WebView: UIViewRepresentable {
             serverRedirectClosure: serverRedirectClosure,
             historyClosure: historyClosure,
             progressClosure: progressClosure,
-            zoomLevel: zoomLevel
+            zoomLevel: zoomLevel,
+            isDesktopSite: isDesktopSite
         )
     }
 
@@ -51,7 +54,8 @@ struct WebView: UIViewRepresentable {
             for: id,
             messageHandler: context.coordinator,
             coordinator: context.coordinator,
-            isIncognito: isIncognito
+            isIncognito: isIncognito,
+            isDesktopSite: isDesktopSite
         )
 
         context.coordinator.lastUILoadedURL = url
@@ -63,6 +67,8 @@ struct WebView: UIViewRepresentable {
         if let url, webView.url == nil {
             webView.load(URLRequest(url: url))
         }
+
+        print("le update 2")
 
         context.coordinator.updateZoom(webView: webView, to: zoomLevel)
         return webView
@@ -86,6 +92,14 @@ struct WebView: UIViewRepresentable {
         webView.navigationDelegate = context.coordinator
         updateContextClosures(context)
         context.coordinator.updateZoom(webView: webView, to: zoomLevel)
+
+        if context.coordinator.isDesktopSite != isDesktopSite {
+            webView.configuration.defaultWebpagePreferences.preferredContentMode = isDesktopSite ? .desktop : .mobile
+            webView.customUserAgent = isDesktopSite ? "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.96 Safari/537.36" : nil
+            webView.reload()
+        }
+
+        context.coordinator.isDesktopSite = isDesktopSite
     }
 
     final class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
@@ -103,6 +117,7 @@ struct WebView: UIViewRepresentable {
         var backForwardListObserver: NSKeyValueObservation?
         var progressObserver: NSKeyValueObservation?
         var zoomLevel: CGFloat = 1.0
+        var isDesktopSite = false
         private var lastBrandColorPick: Date = .distantPast
 
         unowned var webView: WKWebView? {
@@ -168,7 +183,8 @@ struct WebView: UIViewRepresentable {
             serverRedirectClosure: (@Sendable @MainActor (URL) -> Void)?,
             historyClosure: (@Sendable @MainActor (_ hasHistory: Bool) -> Void)?,
             progressClosure: (@Sendable @MainActor (Double) -> Void)?,
-            zoomLevel: CGFloat
+            zoomLevel: CGFloat,
+            isDesktopSite: Bool
         ) {
             self.brandColorClosures = brandColorClosures
             self.websiteMetadataClosure = websiteMetadataClosure
@@ -178,6 +194,7 @@ struct WebView: UIViewRepresentable {
             self.historyClosure = historyClosure
             self.progressClosure = progressClosure
             self.zoomLevel = zoomLevel
+            self.isDesktopSite = isDesktopSite
         }
 
         func dismantle() {
