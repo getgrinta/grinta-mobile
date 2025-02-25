@@ -6,6 +6,7 @@ struct BrowserTab: Identifiable, Hashable, Codable {
     var title: String
     var metadata: WebsiteMetadata?
     var hasPreviousHistory: Bool = false
+    var zoomLevel: Settings.ZoomLevel
     var wasLoaded: Bool = false
     var topBrandColor: Color = .clear
     var bottomBrandColor: Color = .clear
@@ -26,13 +27,19 @@ struct BrowserTab: Identifiable, Hashable, Codable {
         case topBrandColor
         case bottomBrandColor
         case creationTime
-        case isIncognito
+        case zoomLevel
     }
 
-    init(id: UUID = UUID(), url: URL, isIncognito: Bool = false) {
+    init(
+        id: UUID = UUID(),
+        url: URL,
+        isIncognito: Bool = false,
+        zoomLevel: Settings.ZoomLevel = .default
+    ) {
         self.id = id
         self.url = url
         self.isIncognito = isIncognito
+        self.zoomLevel = zoomLevel
         creationTime = Date()
         title = url.absoluteString
     }
@@ -50,7 +57,6 @@ struct BrowserTab: Identifiable, Hashable, Codable {
         hasPreviousHistory = false
         wasLoaded = false
         creationTime = try container.decode(Date.self, forKey: .creationTime)
-        isIncognito = try container.decodeIfPresent(Bool.self, forKey: .isIncognito) ?? false
 
         if let topColorComponents = try container.decodeIfPresent([CGFloat].self, forKey: .topBrandColor) {
             topBrandColor = Color(.sRGB, red: topColorComponents[0], green: topColorComponents[1], blue: topColorComponents[2], opacity: topColorComponents[3])
@@ -58,6 +64,12 @@ struct BrowserTab: Identifiable, Hashable, Codable {
 
         if let bottomColorComponents = try container.decodeIfPresent([CGFloat].self, forKey: .bottomBrandColor) {
             bottomBrandColor = Color(.sRGB, red: bottomColorComponents[0], green: bottomColorComponents[1], blue: bottomColorComponents[2], opacity: bottomColorComponents[3])
+        }
+
+        if let zoomLevelRaw = try container.decodeIfPresent(Int.self, forKey: .zoomLevel) {
+            zoomLevel = Settings.ZoomLevel(rawValue: zoomLevelRaw) ?? .default
+        } else {
+            zoomLevel = .default
         }
     }
 
@@ -76,6 +88,8 @@ struct BrowserTab: Identifiable, Hashable, Codable {
         if let components = UIColor(bottomBrandColor).cgColor.components {
             try container.encode(components, forKey: .bottomBrandColor)
         }
+
+        try container.encode(zoomLevel.rawValue, forKey: .zoomLevel)
     }
 
     static func == (lhs: BrowserTab, rhs: BrowserTab) -> Bool {

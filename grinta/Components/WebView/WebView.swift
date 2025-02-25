@@ -11,24 +11,25 @@ struct WebView: UIViewRepresentable {
     let url: URL?
     let id: UUID
     let isIncognito: Bool
+    let zoomLevel: CGFloat
     var onNavigationFinished: ((URL) -> Void)?
+    var brandColorClosures: [(region: ColorPickerRegion, closure: @Sendable @MainActor (Color) -> Void)] = []
+    var websiteMetadataClosure: (@Sendable @MainActor (WebsiteMetadata) -> Void)?
+    var snapshotClosure: (@Sendable @MainActor (Image, URL) -> Void)?
+    var navigationClosure: (@Sendable @MainActor (WebViewNavigationPhase) -> Void)?
+    var serverRedirectClosure: (@Sendable @MainActor (URL) -> Void)?
+    var historyClosure: (@Sendable @MainActor (_ hasHistory: Bool) -> Void)?
 
     enum ColorPickerRegion {
         case top(CGFloat)
         case bottom(CGFloat)
     }
 
-    private var brandColorClosures: [(region: ColorPickerRegion, closure: @Sendable @MainActor (Color) -> Void)] = []
-    private var websiteMetadataClosure: (@Sendable @MainActor (WebsiteMetadata) -> Void)?
-    private var snapshotClosure: (@Sendable @MainActor (Image, URL) -> Void)?
-    private var navigationClosure: (@Sendable @MainActor (WebViewNavigationPhase) -> Void)?
-    private var historyClosure: (@Sendable @MainActor (_ hasHistory: Bool) -> Void)?
-    private var serverRedirectClosure: (@Sendable @MainActor (URL) -> Void)?
-
-    init(initialURL url: URL?, id: UUID, isIncognito: Bool = false) {
+    init(initialURL url: URL?, id: UUID, isIncognito: Bool = false, zoomLevel: CGFloat = 1.0) {
         self.url = url
         self.id = id
         self.isIncognito = isIncognito
+        self.zoomLevel = zoomLevel
     }
 
     func makeCoordinator() -> Coordinator {
@@ -59,6 +60,7 @@ struct WebView: UIViewRepresentable {
             webView.load(URLRequest(url: url))
         }
 
+        context.coordinator.updateZoom(webView: webView, to: zoomLevel)
         return webView
     }
 
@@ -78,6 +80,7 @@ struct WebView: UIViewRepresentable {
     func updateUIView(_ webView: WKWebView, context: Context) {
         webView.navigationDelegate = context.coordinator
         updateContextClosures(context)
+        context.coordinator.updateZoom(webView: webView, to: zoomLevel)
     }
 
     final class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
@@ -293,6 +296,25 @@ struct WebView: UIViewRepresentable {
                     case let .failure(failure):
                         print("Failure to pick brand color: \(failure)")
                     }
+                }
+            }
+        }
+
+        func updateZoom(webView: WKWebView, to zoomValue: CGFloat) {
+            let js = """
+            var meta = document.querySelector('meta[name=viewport]');
+            if (meta) {
+                meta.setAttribute('content', 'width=device-width, initial-scale=\(zoomValue), minimum-scale=\(zoomValue), maximum-scale=\(zoomValue), user-scalable=yes');
+            } else {
+                meta = document.createElement('meta');
+                meta.name = 'viewport';
+                meta.content = 'width=device-width, initial-scale=\(zoomValue), minimum-scale=\(zoomValue), maximum-scale=\(zoomValue), user-scalable=yes';
+                document.head.appendChild(meta);
+            }
+            """
+            webView.evaluateJavaScript(js) { _, error in
+                if let error {
+                    print("Error updating zoom: \(error)")
                 }
             }
         }

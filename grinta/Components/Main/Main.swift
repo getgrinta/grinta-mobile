@@ -167,7 +167,10 @@ struct Main {
                     state.lastSelectedTabId = tab.id
                     return .none
 
-                case let .zoomChanged(zoomFactor):
+                case let .zoomChanged(zoomLevel):
+                    if let currentTabId = state.currentTabId {
+                        state.tabs[id: currentTabId]?.zoomLevel = zoomLevel
+                    }
                     return .none
                 }
 

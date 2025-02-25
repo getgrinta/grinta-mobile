@@ -6,7 +6,7 @@ final class WebViewHolder: ObservableObject {
     static let shared = WebViewHolder()
     private var webViews: [BrowserTab.ID: WKWebView] = [:]
 
-    func webView(for tabId: BrowserTab.ID, messageHandler: any WKScriptMessageHandler, coordinator: WebView.Coordinator, isIncognito: Bool = false) -> WKWebView {
+    func webView(for tabId: BrowserTab.ID, messageHandler: any WKScriptMessageHandler, coordinator: WebView.Coordinator, isIncognito: Bool = false, zoomLevel _: CGFloat = 1.0) -> WKWebView {
         if let view = webViews[tabId] {
             return view
         }
@@ -26,6 +26,10 @@ final class WebViewHolder: ObservableObject {
         let refreshControl = UIRefreshControl()
         refreshControl.addTarget(coordinator, action: #selector(WebView.Coordinator.handleRefresh(_:)), for: .valueChanged)
         webView.scrollView.refreshControl = refreshControl
+
+        // webView.scrollView.minimumZoomScale = 0.5
+        // webView.scrollView.maximumZoomScale = 2.0
+        // webView.scrollView.zoomScale = zoomLevel
 
         webViews[tabId] = webView
         return webView

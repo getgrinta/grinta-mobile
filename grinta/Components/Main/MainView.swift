@@ -41,7 +41,8 @@ struct MainView: View {
                             WebView(
                                 initialURL: currentTab.url,
                                 id: currentTab.id,
-                                isIncognito: currentTab.isIncognito
+                                isIncognito: currentTab.isIncognito,
+                                zoomLevel: CGFloat(currentTab.zoomLevel.rawValue) / 100.0
                             )
                             .onBrandColorChange(region: .top(20)) { color in
                                 store.send(.brandColorChange(.top, color, currentTab.id), animation: .easeInOut)
