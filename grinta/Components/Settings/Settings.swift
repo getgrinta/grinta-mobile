@@ -6,12 +6,16 @@ struct Settings {
     @ObservableState
     struct State: Equatable {
         var isSharePresented = false
-        var url: URL
+        var url: URL?
         var snapshot: Image?
         var isIncognitoMode = false
 
         var shareItems: [Any] {
             [url, snapshot as Any].compactMap { $0 }
+        }
+
+        var hasCurrentTab: Bool {
+            url != nil
         }
     }
 
@@ -35,7 +39,9 @@ struct Settings {
                 return .none
 
             case .copyCurrentWebsiteURLTapped:
-                UIPasteboard.general.url = state.url
+                if let url = state.url {
+                    UIPasteboard.general.url = url
+                }
                 return .run { @MainActor _ in
                     try await Task.sleep(for: .seconds(0.1))
                     HapticFeedback.light()

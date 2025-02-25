@@ -163,9 +163,10 @@ struct Main {
                     return .none
 
                 case .delegate(.openSettings):
-                    if let url = state.currentTab?.url {
-                        state.destination = .settings(Settings.State(url: url, isIncognitoMode: state.isIncognitoMode))
-                    }
+                    state.destination = .settings(Settings.State(
+                        url: state.currentTab?.url,
+                        isIncognitoMode: state.isIncognitoMode
+                    ))
                     return .none
 
                 case .delegate(.openTabs):

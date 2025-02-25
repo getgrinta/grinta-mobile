@@ -7,35 +7,44 @@ struct SettingsView: View {
 
     var body: some View {
         VStack(spacing: 16) {
-            Text("Current Website")
-                .font(.headline)
-                .foregroundStyle(Color.neutral700)
+            if store.hasCurrentTab {
+                Text("Current Website")
+                    .font(.headline)
+                    .foregroundStyle(Color.neutral700)
 
-            HStack(spacing: 12) {
-                RoundedButton {
-                    store.send(.shareCurrentWebsiteTapped)
-                } label: {
-                    Image(systemSymbol: .squareAndArrowUp)
-                        .font(.body)
-                        .foregroundStyle(Color.neutral700)
-                }
-
-                RoundedButton {
-                    store.send(.copyCurrentWebsiteURLTapped)
-                } label: {
-                    Image(systemSymbol: .link)
-                        .font(.body)
-                        .foregroundStyle(Color.neutral700)
-                }
-
-                RoundedView {
-                    Button {
-                        store.send(.setIncognitoMode(!store.isIncognitoMode))
+                HStack(spacing: 12) {
+                    RoundedButton {
+                        store.send(.shareCurrentWebsiteTapped)
                     } label: {
-                        Image(systemSymbol: store.isIncognitoMode ? .eyesInverse : .eyes)
+                        Image(systemSymbol: .squareAndArrowUp)
                             .font(.body)
                             .foregroundStyle(Color.neutral700)
                     }
+
+                    RoundedButton {
+                        store.send(.copyCurrentWebsiteURLTapped)
+                    } label: {
+                        Image(systemSymbol: .link)
+                            .font(.body)
+                            .foregroundStyle(Color.neutral700)
+                    }
+                }
+            }
+
+            Text("Browser Settings")
+                .font(.headline)
+                .foregroundStyle(Color.neutral700)
+
+            RoundedView {
+                Button {
+                    store.send(.setIncognitoMode(!store.isIncognitoMode))
+                } label: {
+                    HStack {
+                        Image(systemSymbol: store.isIncognitoMode ? .eyesInverse : .eyes)
+                            .font(.body)
+                        Text("Incognito Mode")
+                    }
+                    .foregroundStyle(Color.neutral700)
                 }
             }
         }
