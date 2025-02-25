@@ -21,6 +21,7 @@ struct MagicSheet {
         var searchSuggestions: [SearchSuggestion] = []
         var isRecognizingVoice = false
         var isSpeechRecognitionAvailable = false
+        var loadingProgress: Double = 0
 
         enum Field: Hashable, Sendable {
             case search
@@ -34,6 +35,10 @@ struct MagicSheet {
 
         var searchBarContainsText: Bool {
             !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
+
+        var isLoading: Bool {
+            loadingProgress > 0 && loadingProgress < 1
         }
     }
 
@@ -63,6 +68,7 @@ struct MagicSheet {
         case replaceSearchSuggestions([SearchSuggestion])
         case binding(BindingAction<State>)
         case delegate(Delegate)
+        case updateLoadingProgress(Double)
     }
 
     @Dependency(HistoryArchiveClient.self) var historyArchive
@@ -275,6 +281,10 @@ struct MagicSheet {
 
             case .openTabsTapped:
                 return .send(.changePresentationDetent(.mini)).concatenate(with: .send(.delegate(.openTabs)))
+
+            case let .updateLoadingProgress(progress):
+                state.loadingProgress = progress
+                return .none
             }
         }
     }

@@ -33,6 +33,7 @@ struct Main {
         case updateSnapshot(BrowserTab.ID, Image, URL)
         case onAppear
         case loadedTabs([BrowserTab])
+        case webViewLoadingProgressChanged(Double)
     }
 
     @ObservableState
@@ -130,6 +131,10 @@ struct Main {
 
             case let .navigationFinished(tabId, url):
                 state.tabs[id: tabId]?.url = url
+                return .none
+
+            case let .webViewLoadingProgressChanged(progress):
+                state.magicSheet.loadingProgress = progress
                 return .none
 
             case let .selectTab(tabId):

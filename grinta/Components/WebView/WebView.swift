@@ -19,6 +19,7 @@ struct WebView: UIViewRepresentable {
     var navigationClosure: (@Sendable @MainActor (WebViewNavigationPhase) -> Void)?
     var serverRedirectClosure: (@Sendable @MainActor (URL) -> Void)?
     var historyClosure: (@Sendable @MainActor (_ hasHistory: Bool) -> Void)?
+    var progressClosure: (@Sendable @MainActor (Double) -> Void)?
 
     enum ColorPickerRegion {
         case top(CGFloat)
@@ -40,6 +41,7 @@ struct WebView: UIViewRepresentable {
             navigationClosure: navigationClosure,
             serverRedirectClosure: serverRedirectClosure,
             historyClosure: historyClosure,
+            progressClosure: progressClosure,
             zoomLevel: zoomLevel
         )
     }
@@ -73,6 +75,7 @@ struct WebView: UIViewRepresentable {
         context.coordinator.serverRedirectClosure = serverRedirectClosure
         context.coordinator.brandColorClosures = brandColorClosures
         context.coordinator.historyClosure = historyClosure
+        context.coordinator.progressClosure = progressClosure
     }
 
     static func dismantleUIView(_: WKWebView, coordinator: Coordinator) {
@@ -91,12 +94,14 @@ struct WebView: UIViewRepresentable {
         var snapshotClosure: (@Sendable @MainActor (Image, URL) -> Void)?
         var navigationClosure: (@Sendable @MainActor (WebViewNavigationPhase) -> Void)?
         var serverRedirectClosure: (@Sendable @MainActor (URL) -> Void)?
+        var progressClosure: (@Sendable @MainActor (Double) -> Void)?
         var historyClosure: (@Sendable @MainActor (_ hasHistory: Bool) -> Void)?
 
         var lastUILoadedURL: URL?
         var token: NSKeyValueObservation?
         var urlObserver: NSKeyValueObservation?
         var backForwardListObserver: NSKeyValueObservation?
+        var progressObserver: NSKeyValueObservation?
         var zoomLevel: CGFloat = 1.0
         private var lastBrandColorPick: Date = .distantPast
 
@@ -139,11 +144,20 @@ struct WebView: UIViewRepresentable {
                         self.updateZoom(webView: webView, to: self.zoomLevel)
                     }
                 }
+
+                // Add progress observation
+                progressObserver = webView.observe(\.estimatedProgress, options: [.new]) { [weak self] _, change in
+                    Task { @MainActor in
+                        guard let self, let newProgress = change.newValue else { return }
+                        self.progressClosure?(newProgress)
+                    }
+                }
             }
         }
 
         deinit {
             urlObserver?.invalidate()
+            progressObserver?.invalidate()
         }
 
         init(
@@ -153,6 +167,7 @@ struct WebView: UIViewRepresentable {
             navigationClosure: (@Sendable @MainActor (WebViewNavigationPhase) -> Void)?,
             serverRedirectClosure: (@Sendable @MainActor (URL) -> Void)?,
             historyClosure: (@Sendable @MainActor (_ hasHistory: Bool) -> Void)?,
+            progressClosure: (@Sendable @MainActor (Double) -> Void)?,
             zoomLevel: CGFloat
         ) {
             self.brandColorClosures = brandColorClosures
@@ -161,11 +176,13 @@ struct WebView: UIViewRepresentable {
             self.navigationClosure = navigationClosure
             self.serverRedirectClosure = serverRedirectClosure
             self.historyClosure = historyClosure
+            self.progressClosure = progressClosure
             self.zoomLevel = zoomLevel
         }
 
         func dismantle() {
             urlObserver?.invalidate()
+            progressObserver?.invalidate()
         }
 
         @objc func handleRefresh(_: UIRefreshControl) {
@@ -324,6 +341,12 @@ extension WebView {
     func onWebsiteMetadata(closure: @escaping @Sendable @MainActor (WebsiteMetadata) -> Void) -> Self {
         var copy = self
         copy.websiteMetadataClosure = closure
+        return copy
+    }
+
+    func onProgress(closure: @escaping @Sendable @MainActor (Double) -> Void) -> Self {
+        var copy = self
+        copy.progressClosure = closure
         return copy
     }
 

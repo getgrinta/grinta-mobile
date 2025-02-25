@@ -65,6 +65,9 @@ struct MainView: View {
                             .onWebsiteMetadata { metadata in
                                 store.send(.websiteMetadataFetched(currentTab.id, metadata))
                             }
+                            .onProgress { progress in
+                                store.send(.webViewLoadingProgressChanged(progress))
+                            }
                             .if(store.displaySnapshotOverlay == false || currentTab.wasLoaded) {
                                 $0.matchedGeometryEffect(id: currentTab.id, in: namespace)
                                     .transition(.scale)

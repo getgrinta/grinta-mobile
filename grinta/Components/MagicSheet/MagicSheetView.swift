@@ -38,6 +38,16 @@ struct MagicSheetView: View {
         .presentationDragIndicator(.hidden)
         .presentationCornerRadius(CGFloat(store.cornerRadius))
         .presentationBackgroundInteraction(.enabled)
+        .overlay(alignment: .top) {
+            if store.isLoading {
+                ProgressIndicator(
+                    progress: store.loadingProgress,
+                    backgroundColor: .clear,
+                    foregroundColor: .accentColor
+                )
+                .frame(height: 2)
+            }
+        }
         .onAppear {
             store.send(.onAppear)
         }
