@@ -68,8 +68,6 @@ struct WebView: UIViewRepresentable {
             webView.load(URLRequest(url: url))
         }
 
-        print("le update 2")
-
         context.coordinator.updateZoom(webView: webView, to: zoomLevel)
         return webView
     }
@@ -95,7 +93,7 @@ struct WebView: UIViewRepresentable {
 
         if context.coordinator.isDesktopSite != isDesktopSite {
             webView.configuration.defaultWebpagePreferences.preferredContentMode = isDesktopSite ? .desktop : .mobile
-            webView.customUserAgent = isDesktopSite ? "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.96 Safari/537.36" : nil
+            webView.customUserAgent = UserAgentProvider.userAgent(forDesktopSite: isDesktopSite)
             webView.reload()
         }
 

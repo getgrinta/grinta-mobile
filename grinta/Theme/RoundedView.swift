@@ -1,16 +1,18 @@
 import SwiftUI
 
 struct RoundedView<Embedded: View>: View {
+    let verticalPadding: CGFloat
     let embedded: () -> Embedded
 
-    init(@ViewBuilder embedded: @escaping () -> Embedded) {
+    init(verticalPadding: CGFloat = 12, @ViewBuilder embedded: @escaping () -> Embedded) {
+        self.verticalPadding = verticalPadding
         self.embedded = embedded
     }
 
     var body: some View {
         embedded()
             .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            .padding(.vertical, verticalPadding)
             .background(.neutral600.opacity(0.1))
             .mask(RoundedRectangle(cornerRadius: 24))
             .overlay(

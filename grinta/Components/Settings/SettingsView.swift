@@ -43,14 +43,18 @@ struct SettingsView: View {
                                 store.send(.setDesktopSiteMode(!store.isDesktopSiteMode))
                             } label: {
                                 HStack {
-                                    Image(systemSymbol: store.isDesktopSiteMode ? .desktopcomputer : .iphone)
+                                    Image(systemSymbol: store.isDesktopSiteMode == false ? .desktopcomputer : .iphone)
                                         .font(.body)
                                 }
                                 .foregroundStyle(Color.neutral700)
                             }
                         }
+                    }
+                }
 
-                        RoundedView {
+                HStack(spacing: 12) {
+                    if store.hasCurrentTab {
+                        RoundedView(verticalPadding: 0) {
                             HStack(spacing: 8) {
                                 Button {
                                     store.send(.decreaseZoom)
@@ -59,6 +63,7 @@ struct SettingsView: View {
                                         .font(.body)
                                         .foregroundStyle(Color.neutral700)
                                 }
+                                .padding(.vertical, 12)
 
                                 Text(store.zoomLevel.displayText)
                                     .font(.footnote.weight(.medium))
@@ -71,6 +76,7 @@ struct SettingsView: View {
                                         .font(.body)
                                         .foregroundStyle(Color.neutral700)
                                 }
+                                .padding(.vertical, 12)
                             }
                             .padding(.horizontal, 4)
                         }

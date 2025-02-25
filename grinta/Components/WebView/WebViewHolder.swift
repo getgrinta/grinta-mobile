@@ -19,6 +19,8 @@ final class WebViewHolder: ObservableObject {
         webView.allowsBackForwardNavigationGestures = true
         webView.allowsLinkPreview = true
 
+        webView.customUserAgent = UserAgentProvider.userAgent(forDesktopSite: isDesktopSite)
+
         #if DEBUG
             webView.isInspectable = true
         #endif
@@ -26,8 +28,6 @@ final class WebViewHolder: ObservableObject {
         let refreshControl = UIRefreshControl()
         refreshControl.addTarget(coordinator, action: #selector(WebView.Coordinator.handleRefresh(_:)), for: .valueChanged)
         webView.scrollView.refreshControl = refreshControl
-
-        webView.customUserAgent = isDesktopSite ? "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.96 Safari/537.36" : nil
 
         webViews[tabId] = webView
         return webView
